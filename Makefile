@@ -1,5 +1,13 @@
 # Makefile for HPC 6220 Programming Assignment 1
-CC=mpic++
+
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),Linux)
+	CC = mpic++
+endif
+ifeq ($(UNAME_S),Darwin)
+	CC=mpicxx-openmpi-mp
+endif
+
 #CCFLAGS=-Wall -g
 # activate for compiler optimizations:
 CCFLAGS=-Wall -O3
