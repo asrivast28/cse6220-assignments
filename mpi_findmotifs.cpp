@@ -42,6 +42,11 @@ void worker_main()
     MPI_Bcast(&n, 1, MPI_UNSIGNED, master_rank, comm);
     MPI_Bcast(&l, 1, MPI_UNSIGNED, master_rank, comm);
     MPI_Bcast(&d, 1, MPI_UNSIGNED, master_rank, comm);
+
+    std::vector<bits_t> inputdata(n);
+    bits_t* input = &inputdata[0];
+    MPI_Bcast(input, n, MPI_UINT64_T, master_rank, comm);
+
     MPI_Bcast(&master_depth, 1, MPI_UNSIGNED, master_rank, comm);
 
     // 2.) while the master is sending work:
@@ -91,6 +96,9 @@ std::vector<bits_t> master_main(unsigned int n, unsigned int l, unsigned int d,
     MPI_Bcast(&n, 1, MPI_UNSIGNED, my_rank, comm);
     MPI_Bcast(&l, 1, MPI_UNSIGNED, my_rank, comm);
     MPI_Bcast(&d, 1, MPI_UNSIGNED, my_rank, comm);
+
+    MPI_Bcast((void*)input, n, MPI_UINT64_T, my_rank, comm);
+
     MPI_Bcast(&master_depth, 1, MPI_UNSIGNED, my_rank, comm);
 
     // 2.) solve problem till depth `master_depth` and then send subproblems
