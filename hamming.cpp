@@ -10,15 +10,19 @@ unsigned int hamming(uint64_t x, uint64_t y)
      * number by right shifting 64 times (maximum
      * possible size) and checking the least significant
      * bit.
-     *
-     * TODO: Is there a better/more efficient way
-     *       of counting 1s in bit representation of a number?
      */
-    unsigned int d = 0;
     uint64_t z = x ^ y;
-    for (unsigned short i = 0; i < 64; ++i) {
-      d += z & 1;
-      z = z >> 1;
-    }
-    return d;
+
+    /*
+     * Number of set bits is calculated based on the method described at
+     * https://graphics.stanford.edu/~seander/bithacks.html#CountBitsSet64
+     */
+    z = (z & (0x5555555555555555)) + ((z >> 1) & (0x5555555555555555));
+    z = (z & (0x3333333333333333)) + ((z >> 2) & (0x3333333333333333));
+    z = (z & (0x0f0f0f0f0f0f0f0f)) + ((z >> 4) & (0x0f0f0f0f0f0f0f0f));
+    z = (z & (0x00ff00ff00ff00ff)) + ((z >> 8) & (0x00ff00ff00ff00ff));
+    z = (z & (0x0000ffff0000ffff)) + ((z >> 16) & (0x0000ffff0000ffff));
+    z = (z & (0x00000000ffffffff)) + ((z >> 32) & (0x00000000ffffffff));
+
+    return z;
 }
