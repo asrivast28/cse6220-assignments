@@ -36,7 +36,6 @@ void worker_main()
       throw std::runtime_error("Master process detected in worker_main!");
     }
 
-    // TODO:
     // 1.) receive input from master (including n, l, d, input, master-depth)
     unsigned int n, l, d, master_depth;
     MPI_Bcast(&n, 1, MPI_UNSIGNED, master_rank, comm);
@@ -91,7 +90,6 @@ std::vector<bits_t> master_main(unsigned int n, unsigned int l, unsigned int d,
       throw std::runtime_error("Worker process detected in master_main!");
     }
 
-    // TODO
     // 1.) send input to all workers (including n, l, d, input, depth)
     MPI_Bcast(&n, 1, MPI_UNSIGNED, my_rank, comm);
     MPI_Bcast(&l, 1, MPI_UNSIGNED, my_rank, comm);
