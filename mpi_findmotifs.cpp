@@ -41,20 +41,34 @@ std::vector<bits_t> findmotifs_worker(const unsigned int n,
 {
     std::vector<bits_t> results;
 
-    unsigned int currentd = hamming(input[0], start_value);
-    for (unsigned int i = currentd; i <= d; ++i) {
-      std::vector<bits_t> combinations;
-      getcombinations(l, d, start_value, combinations, startbitpos, i);
-
-      for (std::vector<bits_t>::const_iterator c = combinations.begin(); c != combinations.end(); ++c) {
-        unsigned int j = 1;
-        // Compare the newly obtained number with every other input number.
-        while ((j < n) && (hamming(input[j], *c) <= d)) {
-          ++j;
-        }
-        // Store the number if all the input numbers have a hamming distance of less than equal to d.
-        if (j == n) {
-          results.push_back(*c);
+    std::vector<bits_t> combinations(1, start_value);
+    bits_t flipper = 1;
+    flipper = flipper << startbitpos;
+    for (unsigned int i = startbitpos; i < l; ++i, flipper *= 2) {
+      uint64_t currentSize = combinations.size();
+      for (uint64_t j = 0; j < currentSize; ++j) {
+        bits_t flipped = combinations[j] ^ flipper;
+        unsigned int ham = hamming(flipped, input[0]);
+        if (ham <= d) {
+          bool isResult = true;
+          unsigned int idx = 1;
+          while (idx < n) {
+            // This is a solution only if its Hamming distance is less than or equal to d from all the inputs.
+            unsigned int h = hamming(flipped, input[idx]);
+            isResult = isResult && (h <= d);
+            // If Hamming distance is more than the number of inversions left (2d - ham) then it can never lead to a result.
+            if (h > ((2 * d) - ham)) {
+              break;
+            }
+            ++idx;
+          }
+          if (isResult) {
+            results.push_back(flipped);
+          }
+          // Store the number only if it is a potential solution and we can flip the bits further.
+          if ((idx == n) && (ham < d)) {
+            combinations.push_back(flipped);
+          }
         }
       }
     }
@@ -95,20 +109,23 @@ void worker_main()
     //      a) receive subproblems
     //      b) locally solve (using findmotifs_worker(...))
     //      c) send results to master
-    bits_t start_value;
-    MPI_Status status;
-    MPI_Recv(&start_value, 1, MPI_UNSIGNED_LONG_LONG, master_rank, MPI_ANY_TAG, comm, &status);
-    if (status.MPI_TAG != master_rank) {
-      return;
-    }
+    //
+    while (true) {
+      bits_t start_value;
+      MPI_Status status;
+      MPI_Recv(&start_value, 1, MPI_UNSIGNED_LONG_LONG, master_rank, master_rank, comm, &status);
+      if (status.MPI_TAG != master_rank) {
+        return;
+      }
 
-    std::vector<bits_t> results(findmotifs_worker(n, l, d, input, master_depth, start_value));
-    unsigned int size = results.size();
+      std::vector<bits_t> results(findmotifs_worker(n, l, d, input, master_depth, start_value));
+      unsigned int size = results.size();
 
-    MPI_Request request;
-    MPI_Isend(&size, 1, MPI_UNSIGNED, master_rank, my_rank, comm, &request);
-    if (size > 0) {
-      MPI_Isend(&results[0], size, MPI_UNSIGNED_LONG_LONG, master_rank, my_rank, comm, &request);
+      MPI_Request request;
+      MPI_Send(&size, 1, MPI_UNSIGNED, master_rank, my_rank, comm);
+      if (size > 0) {
+        MPI_Send(&results[0], size, MPI_UNSIGNED_LONG_LONG, master_rank, my_rank, comm);
+      }
     }
 
     // 3.) you have to figure out a communication protocoll:
@@ -127,20 +144,38 @@ std::vector<bits_t> findmotifs_master(const unsigned int n,
 {
     std::vector<bits_t> results;
 
+    MPI_Comm comm = MPI_COMM_WORLD;
+    int p, my_rank;
+    MPI_Comm_size(comm, &p);
+    MPI_Comm_rank(comm, &my_rank);
+
+    int i = my_rank + 1;
+
+    std::vector<unsigned short> ready(p, 2);
+
     std::vector<bits_t> combinations(1, input[0]);
-    bits_t base = 1;
-    for (unsigned int i = 0; i < till_depth; ++i) {
-      bits_t flipper = base << i;
+    bits_t flipper = 1;
+    for (unsigned int i = 0; i < till_depth; ++i, flipper *= 2) {
       uint64_t currentSize = combinations.size();
       for (uint64_t j = 0; j < currentSize; ++j) {
         bits_t flipped = combinations[j] ^ flipper;
         if (hamming(flipped, input[0]) <= d) {
           // Farm this subproblem out.
+          MPI_Request request;
+          MPI_Send(&flipped, 1, MPI_UNSIGNED_LONG_LONG, 1, my_rank, comm);
+
+          unsigned int size = 0;
+          MPI_Status status;
+          MPI_Recv(&size, 1, MPI_UNSIGNED, 1, my_rank, comm, &status);
+          if (size > 0) {
+            unsigned int prevSize = results.size();
+            results.resize(prevSize + size);
+            MPI_Recv(&results[prevSize], size, MPI_UNSIGNED_LONG_LONG, 1, my_rank, comm, &status);
+          }
+          combinations.push_back(flipped);
         }
       }
     }
-
-    // TODO: implement your solution here
 
     return results;
 }
@@ -149,7 +184,6 @@ std::vector<bits_t> master_main(unsigned int n, unsigned int l, unsigned int d,
                                 const bits_t* input, unsigned int master_depth)
 {
     MPI_Comm comm = MPI_COMM_WORLD;
-
     int p, my_rank;
     MPI_Comm_size(comm, &p);
     MPI_Comm_rank(comm, &my_rank);
@@ -172,15 +206,15 @@ std::vector<bits_t> master_main(unsigned int n, unsigned int l, unsigned int d,
     // 2.) solve problem till depth `master_depth` and then send subproblems
     //     to the workers and receive solutions in each communication
     //     Use your implementation of `findmotifs_master(...)` here.
-    std::vector<bits_t> results;
-    // MPI_Send(&size, 1, MPI_UNSIGNED, master_rank, my_rank, comm, &request);
+    std::vector<bits_t> results(findmotifs_master(n, l, d, input, master_depth));
 
 
 
     // 3.) receive last round of solutions
     // 4.) terminate (and let the workers know)
     for (int i = 0; i < p; ++i) {
-      MPI_Send(NULL, 0, MPI_UNSIGNED_LONG_LONG, p, 666, comm);
+      bits_t num = 0;
+      MPI_Send(&num, 1, MPI_UNSIGNED_LONG_LONG, i, 666, comm);
     }
 
     return results;
