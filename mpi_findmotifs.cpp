@@ -113,18 +113,19 @@ void worker_main()
     while (true) {
       bits_t start_value;
       MPI_Status status;
-      MPI_Recv(&start_value, 1, MPI_UNSIGNED_LONG_LONG, master_rank, master_rank, comm, &status);
+      MPI_Recv(&start_value, 1, MPI_UNSIGNED_LONG_LONG, master_rank, MPI_ANY_TAG, comm, &status);
       if (status.MPI_TAG != master_rank) {
         return;
       }
+      std::cout << start_value << std::endl;
 
       std::vector<bits_t> results(findmotifs_worker(n, l, d, input, master_depth, start_value));
       unsigned int size = results.size();
 
-      MPI_Request request;
-      MPI_Send(&size, 1, MPI_UNSIGNED, master_rank, my_rank, comm);
+      MPI_Send(&size, 1, MPI_UNSIGNED, master_rank, master_rank, comm);
       if (size > 0) {
-        MPI_Send(&results[0], size, MPI_UNSIGNED_LONG_LONG, master_rank, my_rank, comm);
+        MPI_Request request;
+        MPI_Isend(&results[0], size, MPI_UNSIGNED_LONG_LONG, master_rank, master_rank, comm, &request);
       }
     }
 
@@ -149,10 +150,8 @@ std::vector<bits_t> findmotifs_master(const unsigned int n,
     MPI_Comm_size(comm, &p);
     MPI_Comm_rank(comm, &my_rank);
 
-    int i = my_rank + 1;
 
-    std::vector<unsigned short> ready(p, 2);
-
+    std::vector<unsigned int> resultSize(p, 0);
     std::vector<bits_t> combinations(1, input[0]);
     bits_t flipper = 1;
     for (unsigned int i = 0; i < till_depth; ++i, flipper *= 2) {
@@ -161,12 +160,11 @@ std::vector<bits_t> findmotifs_master(const unsigned int n,
         bits_t flipped = combinations[j] ^ flipper;
         if (hamming(flipped, input[0]) <= d) {
           // Farm this subproblem out.
-          MPI_Request request;
           MPI_Send(&flipped, 1, MPI_UNSIGNED_LONG_LONG, 1, my_rank, comm);
 
           unsigned int size = 0;
           MPI_Status status;
-          MPI_Recv(&size, 1, MPI_UNSIGNED, 1, my_rank, comm, &status);
+          MPI_Recv(&resultSize[0], 1, MPI_UNSIGNED, 1, my_rank, comm, &status);
           if (size > 0) {
             unsigned int prevSize = results.size();
             results.resize(prevSize + size);
@@ -212,7 +210,7 @@ std::vector<bits_t> master_main(unsigned int n, unsigned int l, unsigned int d,
 
     // 3.) receive last round of solutions
     // 4.) terminate (and let the workers know)
-    for (int i = 0; i < p; ++i) {
+    for (int i = 1; i < p; ++i) {
       bits_t num = 0;
       MPI_Send(&num, 1, MPI_UNSIGNED_LONG_LONG, i, 666, comm);
     }
