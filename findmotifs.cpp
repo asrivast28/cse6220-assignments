@@ -4,6 +4,36 @@
 
 #include <stdexcept>
 
+// checks if the given flipped number is a solution
+
+static void check_solution(unsigned int n, unsigned int d,
+                           const bits_t* input, bits_t flipped,
+                           std::vector<bits_t>& result, std::vector<bits_t>& candidates)
+{
+    unsigned int ham = hamming(flipped, input[0]); // Hamming distance of the base from the flipped number.
+    if (ham <= d) {
+      bool isResult = true; // If the flipped number can be reported as result.
+      unsigned int idx = 1;
+      while (idx < n) {
+        // This is a solution only if its Hamming distance is less than or equal to d from all the inputs.
+        unsigned int h = hamming(flipped, input[idx]);
+        isResult = isResult && (h <= d);
+        // If Hamming distance is more than the number of inversions left (2d - ham) then it can never lead to a result.
+        if (h > ((2 * d) - ham)) {
+          break;
+        }
+        ++idx;
+      }
+      if (isResult) {
+        result.push_back(flipped);
+      }
+      // Store the number only if it is a potential solution and we can flip the bits further.
+      if ((idx == n) && (ham < d)) {
+        candidates.push_back(flipped);
+      }
+    }
+}
+
 // implements the sequential findmotifs function
 std::vector<bits_t> findmotifs(unsigned int n, unsigned int l,
                                unsigned int d, const bits_t* input)
@@ -23,37 +53,18 @@ std::vector<bits_t> findmotifs(unsigned int n, unsigned int l,
 
     // create an empty vector
     std::vector<bits_t> result;
-
-    std::vector<bits_t> combinations(1, input[0]); // Stores all combinations obtained by flipping bits in the reference number.
+    // Stores all candidates obtained by flipping bits in the reference number.
+    std::vector<bits_t> candidates;
+    check_solution(n, d, input, input[0], result, candidates);
     // Since distance from a particular number can be anything less than d,
     // we iterate over all such possibilities in the following for loop.
     bits_t flipper = 1; // Used for flipping bits, one bit a time from LSB to MSB.
     for (unsigned int i = 0; i < l; ++i, flipper *= 2) {
-      uint64_t currentSize = combinations.size(); // Number of combinations to be flipped by one bit in this iteration.
+      uint64_t currentSize = candidates.size(); // Number of candidates to be flipped by one bit in this iteration.
       for (uint64_t j = 0; j < currentSize; ++j) {
-        bits_t flipped = combinations[j] ^ flipper; // Store the flipped number after flipping one bit.
-        unsigned int ham = hamming(flipped, input[0]); // Hamming distance of the base from the flipped number.
-        if (ham <= d) {
-          bool isResult = true; // If the flipped number can be reported as result.
-          unsigned int idx = 1;
-          while (idx < n) {
-            // This is a solution only if its Hamming distance is less than or equal to d from all the inputs.
-            unsigned int h = hamming(flipped, input[idx]);
-            isResult = isResult && (h <= d);
-            // If Hamming distance is more than the number of inversions left (2d - ham) then it can never lead to a result.
-            if (h > ((2 * d) - ham)) {
-              break;
-            }
-            ++idx;
-          }
-          if (isResult) {
-            result.push_back(flipped);
-          }
-          // Store the number only if it is a potential solution and we can flip the bits further.
-          if ((idx == n) && (ham < d)) {
-            combinations.push_back(flipped);
-          }
-        }
+        bits_t flipped = candidates[j] ^ flipper; // Store the flipped number after flipping one bit.
+        // check if the solution is a result or a potential result
+        check_solution(n, d, input, flipped, result, candidates);
       }
     }
 
