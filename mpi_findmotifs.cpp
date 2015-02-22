@@ -6,6 +6,8 @@
 #include <numeric>
 #include <stdexcept>
 
+// Hi, from Cansu!
+
 // special tag for signalling workers to exit
 const int EXIT_TAG = 666;
 
