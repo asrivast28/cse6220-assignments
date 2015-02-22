@@ -6,9 +6,8 @@
 #include <numeric>
 #include <stdexcept>
 
-extern void check_solution(unsigned int n, unsigned int d,
-                          const bits_t* input, bits_t flipped,
-                          std::vector<bits_t>& result, std::vector<bits_t>& candidate);
+// special tag for signalling workers to exit
+const int EXIT_TAG = 666;
 
 std::vector<bits_t> findmotifs_worker(const unsigned int n,
                        const unsigned int l,
@@ -227,7 +226,7 @@ std::vector<bits_t> master_main(unsigned int n, unsigned int l, unsigned int d,
     // 4.) terminate (and let the workers know)
     for (int i = 1; i < p; ++i) {
       bits_t num = 0;
-      MPI_Send(&num, 1, MPI_UNSIGNED_LONG_LONG, i, 666, comm);
+      MPI_Send(&num, 1, MPI_UNSIGNED_LONG_LONG, i, EXIT_TAG, comm);
     }
 
     return result;
