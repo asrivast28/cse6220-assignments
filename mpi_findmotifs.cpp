@@ -84,8 +84,6 @@ void worker_main()
       std::vector<bits_t> result(findmotifs_worker(n, l, d, input, master_depth, start_value));
       unsigned int size = result.size();
 
-      //std::cout << my_rank << ": " << size << std::endl;
-      //std::cout << "solution size is " << size << " in " << my_rank << std::endl;
       MPI_Send(&size, 1, MPI_UNSIGNED, master_rank, master_rank, comm);
       if (size > 0) {
         //for (unsigned int i = 0; i < size; ++i) {
@@ -104,25 +102,37 @@ void worker_main()
     // 4.) clean up: e.g. free allocated space
 }
 
-void receive_results(const int busy_count, std::vector<MPI_Request>& request,
+void receive_results(const int busy_count, int first_worker, std::vector<MPI_Request>& request,
                      std::vector<unsigned int>& result_size, std::vector<bits_t>& result,
                      MPI_Comm& comm, const int my_rank)
 {
-    MPI_Waitall(busy_count, &request[0], MPI_STATUSES_IGNORE);
-    std::partial_sum(result_size.begin(), result_size.end(), result_size.begin());
-    size_t prev_size = result.size();
-    result.resize(prev_size + result_size[busy_count]);
-    unsigned int num_recv = 0;
-    for (int id = 1; id <= busy_count; ++id) {
-      unsigned int this_size = result_size[id] - result_size[id-1];
-      if (this_size > 0) {
-        unsigned int offset = prev_size + result_size[id-1];
-        //std::cout << "receiving " << this_size << " from " << id << " with offset " << offset << std::endl;
-        //std::cout << "result size is " << result.size() << std::endl;
-        MPI_Irecv(&result[offset], this_size, MPI_UNSIGNED_LONG_LONG, id, my_rank, comm, &request[num_recv++]);
+    int p = request.size();
+    if (first_worker > p) {
+      first_worker = 1;
+      MPI_Waitall(busy_count, &request[first_worker], MPI_STATUSES_IGNORE);
+    }
+    else {
+      if (p < (first_worker + busy_count)) {
+        int wait_count = (p - first_worker);
+        MPI_Waitall(wait_count, &request[first_worker], MPI_STATUSES_IGNORE);
+        wait_count = busy_count - wait_count;
+        MPI_Waitall(wait_count, &request[1], MPI_STATUSES_IGNORE);
+      }
+      else {
+        MPI_Waitall(busy_count, &request[first_worker], MPI_STATUSES_IGNORE);
       }
     }
-    MPI_Waitall(num_recv, &request[0], MPI_STATUSES_IGNORE);
+    std::vector<std::vector<bits_t> > this_result;
+    int worker_id = first_worker;
+    for (int wait_count = 0; wait_count < busy_count; ++wait_count) {
+      unsigned int this_size = result_size[worker_id];
+      if (this_size > 0) {
+        unsigned int offset = result.size();
+        result.resize(offset + this_size);
+        MPI_Recv(&result[offset], this_size, MPI_UNSIGNED_LONG_LONG, worker_id, my_rank, comm, MPI_STATUS_IGNORE);
+      }
+      worker_id = (worker_id == (p - 1)) ? 1 : (worker_id + 1);
+    }
 }
 
 void send_partial(bits_t partial, MPI_Comm& comm, const int p, const int my_rank,
@@ -130,12 +140,17 @@ void send_partial(bits_t partial, MPI_Comm& comm, const int p, const int my_rank
                   int& busy_count, int& worker_id, std::vector<MPI_Request>& request)
 {
     MPI_Send(&partial, 1, MPI_UNSIGNED_LONG_LONG, worker_id, my_rank, comm);
-    MPI_Irecv(&result_size[worker_id], 1, MPI_UNSIGNED, worker_id, my_rank, comm, &request[busy_count++]);
-    if (busy_count == (p - 1)) {
-      receive_results(busy_count, request, result_size, result, comm, my_rank);
-      busy_count = 0;
+    int request_size = request.size();
+    if (worker_id >= request_size) {
+      request.resize(worker_id + 1);
     }
+    MPI_Irecv(&result_size[worker_id], 1, MPI_UNSIGNED, worker_id, my_rank, comm, &request[worker_id]);
+    ++busy_count;
     worker_id = (worker_id == (p - 1)) ? 1 : (worker_id + 1);
+    if (busy_count == (p - 1)) {
+      receive_results(1, worker_id, request, result_size, result, comm, my_rank);
+      --busy_count;
+    }
 }
 
 // Explores the solution space obtained by flipping b bits in the l bit number
@@ -184,7 +199,7 @@ std::vector<bits_t> findmotifs_master(const unsigned int n,
 
 
     std::vector<unsigned int> result_size(p, 0);
-    std::vector<MPI_Request> request(p);
+    std::vector<MPI_Request> request;
 
     int worker_id = 1;
     int busy_count = 0;
@@ -194,7 +209,8 @@ std::vector<bits_t> findmotifs_master(const unsigned int n,
     }
 
     if (busy_count > 0) {
-      receive_results(busy_count, request, result_size, result, comm, my_rank);
+      worker_id = (worker_id == (p - 1)) ? 1 : (worker_id + 1);
+      receive_results(busy_count, worker_id, request, result_size, result, comm, my_rank);
     }
 
     return result;
