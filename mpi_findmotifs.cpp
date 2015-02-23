@@ -13,33 +13,11 @@ const int EXIT_TAG = 666;
 
 // checks if the given flipped number is a solution
 
-void check_solution(unsigned int n, unsigned int d,
-                    const bits_t* input, bits_t flipped,
-                    std::vector<bits_t>& result, std::vector<bits_t>& candidate)
-{
-    unsigned int ham = hamming(flipped, input[0]); // Hamming distance of the base from the flipped number.
-    if (ham <= d) {
-      bool isResult = true; // If the flipped number can be reported as result.
-      unsigned int idx = 1;
-      while (idx < n) {
-        // This is a solution only if its Hamming distance is less than or equal to d from all the inputs.
-        unsigned int h = hamming(flipped, input[idx]);
-        isResult = isResult && (h <= d);
-        // If Hamming distance is more than the number of inversions left (2d - ham) then it can never lead to a result.
-        if (h > ((2 * d) - ham)) {
-          break;
-        }
-        ++idx;
-      }
-      if (isResult) {
-        result.push_back(flipped);
-      }
-      // Store the number only if it is a potential solution and we can flip the bits further.
-      if ((idx == n) && (ham < d)) {
-        candidate.push_back(flipped);
-      }
-    }
-}
+extern void explore_solutions(const unsigned int n, const unsigned int l,
+                       const unsigned int d, const bits_t* input,
+                       const unsigned int b, const bits_t number,
+                       std::vector<bits_t>& result,
+                       unsigned int currentidx, unsigned int currentd);
 
 std::vector<bits_t> findmotifs_worker(const unsigned int n,
                        const unsigned int l,
@@ -50,18 +28,10 @@ std::vector<bits_t> findmotifs_worker(const unsigned int n,
 {
     std::vector<bits_t> result;
 
-    std::vector<bits_t> candidate;
-    check_solution(n, d, input, start_value, result, candidate);
+    unsigned int ham = hamming(start_value, input[0]);
 
-    bits_t flipper = 1;
-    flipper = flipper << startbitpos;
-    for (unsigned int i = startbitpos; i < l; ++i, flipper *= 2) {
-      uint64_t currentSize = candidate.size();
-      for (uint64_t j = 0; j < currentSize; ++j) {
-        bits_t flipped = candidate[j] ^ flipper;
-        // check if the solution is a result or a potential result
-        check_solution(n, d, input, flipped, result, candidate);
-      }
+    for (unsigned int b = ham; b <= d; ++b) {
+      explore_solutions(n, l, d, input, b, start_value, result, startbitpos, ham);
     }
 
     return result;
@@ -169,7 +139,7 @@ void send_partial(bits_t partial, MPI_Comm& comm, const int p, const int my_rank
 }
 
 // Explores the solution space obtained by flipping b bits in the l bit number
-void explore_solutions(const unsigned int l, const unsigned int b,
+void explore_master(const unsigned int l, const unsigned int b,
                        const bits_t number, MPI_Comm& comm,
                        const int p, const int my_rank,
                        std::vector<bits_t>& result, std::vector<unsigned int>& result_size,
@@ -185,7 +155,7 @@ void explore_solutions(const unsigned int l, const unsigned int b,
         // flip the bit by XOR-ing with appropriate number
         bits_t flipped = number ^ (base << idx);
         if ((currentd + 1) < b) {
-          explore_solutions(l, b, flipped, comm, p, my_rank, result, result_size, busy_count, worker_id, request, idx + 1, currentd + 1);
+          explore_master(l, b, flipped, comm, p, my_rank, result, result_size, busy_count, worker_id, request, idx + 1, currentd + 1);
         }
         else {
           send_partial(flipped, comm, p, my_rank, result, result_size, busy_count, worker_id, request);
@@ -220,7 +190,7 @@ std::vector<bits_t> findmotifs_master(const unsigned int n,
     int busy_count = 0;
     unsigned int max_depth = (till_depth < d) ? till_depth : d;
     for (unsigned int b = 0; b <= max_depth; ++b) {
-      explore_solutions(till_depth, b, input[0], comm, p, my_rank, result, result_size, busy_count, worker_id, request);
+      explore_master(till_depth, b, input[0], comm, p, my_rank, result, result_size, busy_count, worker_id, request);
     }
 
     if (busy_count > 0) {
