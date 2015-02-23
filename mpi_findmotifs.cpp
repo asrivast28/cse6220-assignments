@@ -134,35 +134,6 @@ void worker_main()
     // 4.) clean up: e.g. free allocated space
 }
 
-
-// Returns all l bit candidate of number with d bits flipped in the binary representation.
-void get_combinations(const unsigned int l, const unsigned int d,
-                      const bits_t number, std::vector<bits_t>& combinations,
-                      unsigned int currentidx = 0, unsigned int currentd = 0)
-{
-    if (d > 0) {
-      // We flip bits in the original number recursively at every level until we have flipped maximum number
-      // of allowed bits in the number. We consider all remaining possibilities at this level in
-      // the following for loop.
-      bits_t base = 1;
-      for (unsigned int idx = currentidx; idx <= l - (d - currentd); ++idx) {
-        // flip the bit by XOR-ing with appropriate number
-        bits_t flipped = number ^ (base << idx);
-        if ((currentd + 1) < d) {
-          get_combinations(l, d, flipped, combinations, idx + 1, currentd + 1);
-        }
-        else {
-          combinations.push_back(flipped);
-        }
-      }
-    }
-    else {
-      // There is only one possibility, 0, if d is 0.
-      combinations.push_back(number);
-    }
-}
-
-
 void receive_results(const int busy_count, std::vector<MPI_Request>& request,
                      std::vector<unsigned int>& result_size, std::vector<bits_t>& result,
                      MPI_Comm& comm, const int my_rank)
@@ -182,6 +153,49 @@ void receive_results(const int busy_count, std::vector<MPI_Request>& request,
       }
     }
     MPI_Waitall(num_recv, &request[0], MPI_STATUSES_IGNORE);
+}
+
+void send_partial(bits_t partial, MPI_Comm& comm, const int p, const int my_rank,
+                  std::vector<bits_t>& result, std::vector<unsigned int>& result_size,
+                  int& busy_count, int& worker_id, std::vector<MPI_Request>& request)
+{
+    MPI_Send(&partial, 1, MPI_UNSIGNED_LONG_LONG, worker_id, my_rank, comm);
+    MPI_Irecv(&result_size[worker_id], 1, MPI_UNSIGNED, worker_id, my_rank, comm, &request[busy_count++]);
+    if (busy_count == (p - 1)) {
+      receive_results(busy_count, request, result_size, result, comm, my_rank);
+      busy_count = 0;
+    }
+    worker_id = (worker_id == (p - 1)) ? 1 : (worker_id + 1);
+}
+
+// Explores the solution space obtained by flipping b bits in the l bit number
+void explore_solutions(const unsigned int l, const unsigned int b,
+                       const bits_t number, MPI_Comm& comm,
+                       const int p, const int my_rank,
+                       std::vector<bits_t>& result, std::vector<unsigned int>& result_size,
+                       int& busy_count, int& worker_id, std::vector<MPI_Request>& request,
+                       unsigned int currentidx = 0, unsigned int currentd = 0)
+{
+    if (b > 0) {
+      // We flip bits in the original number recursively at every level until we have flipped maximum number
+      // of allowed bits in the number. We consider all remaining possibilities at this level in
+      // the following for loop.
+      bits_t base = 1;
+      for (unsigned int idx = currentidx; idx <= l - (b - currentd); ++idx) {
+        // flip the bit by XOR-ing with appropriate number
+        bits_t flipped = number ^ (base << idx);
+        if ((currentd + 1) < b) {
+          explore_solutions(l, b, flipped, comm, p, my_rank, result, result_size, busy_count, worker_id, request, idx + 1, currentd + 1);
+        }
+        else {
+          send_partial(flipped, comm, p, my_rank, result, result_size, busy_count, worker_id, request);
+        }
+      }
+    }
+    else {
+      // There is only one possibility, 0, if b is 0.
+      send_partial(number, comm, p, my_rank, result, result_size, busy_count, worker_id, request);
+    }
 }
 
 
@@ -204,19 +218,9 @@ std::vector<bits_t> findmotifs_master(const unsigned int n,
 
     int worker_id = 1;
     int busy_count = 0;
-    for (unsigned int i = 0; i <= till_depth; ++i) {
-      std::vector<bits_t> combinations;
-      get_combinations(till_depth, i, input[0], combinations);
-
-      for (unsigned int c = 0; c < combinations.size(); ++c) {
-        MPI_Send(&combinations[c], 1, MPI_UNSIGNED_LONG_LONG, worker_id, my_rank, comm);
-        MPI_Irecv(&result_size[worker_id], 1, MPI_UNSIGNED, worker_id, my_rank, comm, &request[busy_count++]);
-        if (busy_count == (p - 1)) {
-          receive_results(busy_count, request, result_size, result, comm, my_rank);
-          busy_count = 0;
-        }
-        worker_id = (worker_id == (p - 1)) ? 1 : (worker_id + 1);
-      }
+    unsigned int max_depth = (till_depth < d) ? till_depth : d;
+    for (unsigned int b = 0; b <= max_depth; ++b) {
+      explore_solutions(till_depth, b, input[0], comm, p, my_rank, result, result_size, busy_count, worker_id, request);
     }
 
     if (busy_count > 0) {
