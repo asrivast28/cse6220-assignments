@@ -11,6 +11,36 @@
 // special tag for signalling workers to exit
 const int EXIT_TAG = 666;
 
+// checks if the given flipped number is a solution
+
+void check_solution(unsigned int n, unsigned int d,
+                    const bits_t* input, bits_t flipped,
+                    std::vector<bits_t>& result, std::vector<bits_t>& candidate)
+{
+    unsigned int ham = hamming(flipped, input[0]); // Hamming distance of the base from the flipped number.
+    if (ham <= d) {
+      bool isResult = true; // If the flipped number can be reported as result.
+      unsigned int idx = 1;
+      while (idx < n) {
+        // This is a solution only if its Hamming distance is less than or equal to d from all the inputs.
+        unsigned int h = hamming(flipped, input[idx]);
+        isResult = isResult && (h <= d);
+        // If Hamming distance is more than the number of inversions left (2d - ham) then it can never lead to a result.
+        if (h > ((2 * d) - ham)) {
+          break;
+        }
+        ++idx;
+      }
+      if (isResult) {
+        result.push_back(flipped);
+      }
+      // Store the number only if it is a potential solution and we can flip the bits further.
+      if ((idx == n) && (ham < d)) {
+        candidate.push_back(flipped);
+      }
+    }
+}
+
 std::vector<bits_t> findmotifs_worker(const unsigned int n,
                        const unsigned int l,
                        const unsigned int d,

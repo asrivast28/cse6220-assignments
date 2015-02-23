@@ -2,35 +2,46 @@
 #include "findmotifs.h"
 #include "hamming.h"
 
-#include <stdexcept>
-
-// checks if the given flipped number is a solution
-
-void check_solution(unsigned int n, unsigned int d,
-                    const bits_t* input, bits_t flipped,
-                    std::vector<bits_t>& result, std::vector<bits_t>& candidate)
+// checks if the given number is a solution
+void check_solution(const unsigned int n, const unsigned int d,
+                    const bits_t* input, const bits_t number,
+                    std::vector<bits_t>& result)
 {
-    unsigned int ham = hamming(flipped, input[0]); // Hamming distance of the base from the flipped number.
-    if (ham <= d) {
-      bool isResult = true; // If the flipped number can be reported as result.
-      unsigned int idx = 1;
-      while (idx < n) {
-        // This is a solution only if its Hamming distance is less than or equal to d from all the inputs.
-        unsigned int h = hamming(flipped, input[idx]);
-        isResult = isResult && (h <= d);
-        // If Hamming distance is more than the number of inversions left (2d - ham) then it can never lead to a result.
-        if (h > ((2 * d) - ham)) {
-          break;
+    unsigned int j = 1;
+    while ((j < n) && (hamming(input[j], number) <= d)) {
+      ++j;
+    }
+    if (j == n) {
+      result.push_back(number);
+    }
+}
+
+// Explores the solution space obtained by flipping b bits in the l bit number
+void explore_solutions(const unsigned int n, const unsigned int l,
+                       const unsigned int d, const bits_t* input,
+                       const unsigned int b, const bits_t number,
+                       std::vector<bits_t>& result,
+                       unsigned int currentidx = 0, unsigned int currentd = 0)
+{
+    if (b > 0) {
+      // We flip bits in the original number recursively at every level until we have flipped maximum number
+      // of allowed bits in the number. We consider all remaining possibilities at this level in
+      // the following for loop.
+      bits_t base = 1;
+      for (unsigned int idx = currentidx; idx <= l - (b - currentd); ++idx) {
+        // flip the bit by XOR-ing with appropriate number
+        bits_t flipped = number ^ (base << idx);
+        if ((currentd + 1) < b) {
+          explore_solutions(n, l, d, input, b, flipped, result, idx + 1, currentd + 1);
         }
-        ++idx;
+        else {
+          check_solution(n, d, input, flipped, result);
+        }
       }
-      if (isResult) {
-        result.push_back(flipped);
-      }
-      // Store the number only if it is a potential solution and we can flip the bits further.
-      if ((idx == n) && (ham < d)) {
-        candidate.push_back(flipped);
-      }
+    }
+    else {
+      // There is only one possibility, 0, if b is 0.
+      check_solution(n, d, input, number, result);
     }
 }
 
@@ -53,20 +64,12 @@ std::vector<bits_t> findmotifs(unsigned int n, unsigned int l,
 
     // create an empty vector
     std::vector<bits_t> result;
-    // Stores all candidate obtained by flipping bits in the reference number.
-    std::vector<bits_t> candidate;
-    check_solution(n, d, input, input[0], result, candidate);
+
     // Since distance from a particular number can be anything less than d,
     // we iterate over all such possibilities in the following for loop.
-    bits_t flipper = 1; // Used for flipping bits, one bit a time from LSB to MSB.
-    for (unsigned int i = 0; i < l; ++i, flipper *= 2) {
-      uint64_t currentSize = candidate.size(); // Number of candidate to be flipped by one bit in this iteration.
-      for (uint64_t j = 0; j < currentSize; ++j) {
-        bits_t flipped = candidate[j] ^ flipper; // Store the flipped number after flipping one bit.
-        // check if the solution is a result or a potential result
-        check_solution(n, d, input, flipped, result, candidate);
-      }
+    for (unsigned int b = 0; b <= d; ++b) {
+      // Search the solution space obtained by flipping b bits in input[0]
+      explore_solutions(n, l, d, input, b, input[0], result);
     }
-
     return result;
 }
