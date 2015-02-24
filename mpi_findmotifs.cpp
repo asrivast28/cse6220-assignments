@@ -216,7 +216,7 @@ std::vector<bits_t> findmotifs_master(const unsigned int n,
 
 
     std::vector<unsigned int> result_size(2 * p - 1, 0);
-    std::vector<MPI_Request> request;
+    std::vector<MPI_Request> request(1);
 
     int worker_id = 1;
     int busy_count = 0;
@@ -226,7 +226,7 @@ std::vector<bits_t> findmotifs_master(const unsigned int n,
     }
 
     if (busy_count > 0) {
-      worker_id = (worker_id == (p - 1)) ? 1 : (worker_id + 1);
+      worker_id = (worker_id == (2 * p - 2)) ? 1 : (worker_id + 1);
       receive_results(busy_count, worker_id, request, result_size, result, comm, p);
     }
 
