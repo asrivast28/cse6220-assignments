@@ -21,7 +21,7 @@ void explore_solutions(const unsigned int n, const unsigned int l,
                        const unsigned int d, const bits_t* input,
                        const unsigned int b, const bits_t number,
                        std::vector<bits_t>& result,
-                       unsigned int currentidx = 0, unsigned int currentd = 0)
+                       unsigned int currentidx, unsigned int currentd)
 {
     if (b > 0) {
       // We flip bits in the original number recursively at every level until we have flipped maximum number

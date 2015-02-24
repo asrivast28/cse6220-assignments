@@ -16,12 +16,6 @@ const int EXIT_TAG = 666;
 
 // checks if the given flipped number is a solution
 
-extern void explore_solutions(const unsigned int n, const unsigned int l,
-                       const unsigned int d, const bits_t* input,
-                       const unsigned int b, const bits_t number,
-                       std::vector<bits_t>& result,
-                       unsigned int currentidx, unsigned int currentd);
-
 std::vector<bits_t> findmotifs_worker(const unsigned int n,
                        const unsigned int l,
                        const unsigned int d,
@@ -115,16 +109,6 @@ void worker_main()
       }
 
       iter = (iter + 1) % 2;
-
-      //if (result_size[iter] > 0) {
-        //for (unsigned int i = 0; i < size; ++i) {
-          //std::cout << result[i] << " ";
-        //}
-        //std::cout << std::endl;
-        //MPI_Request request;
-        //MPI_Isend(&result[iter][0], result_size[iter], MPI_UNSIGNED_LONG_LONG, master_rank, master_rank, comm, &request);
-        //MPI_Wait(&request, MPI_STATUS_IGNORE);
-      //}
     }
 
     // 3.) you have to figure out a communication protocoll:
@@ -135,16 +119,16 @@ void worker_main()
 
 void receive_results(const int busy_count, int first_worker, std::vector<MPI_Request>& request,
                      std::vector<unsigned int>& result_size, std::vector<bits_t>& result,
-                     MPI_Comm& comm, const int my_rank)
+                     MPI_Comm& comm, const int p)
 {
-    int p = request.size();
-    if (first_worker > p) {
+    int request_size = request.size();
+    if (first_worker > request_size) {
       first_worker = 1;
       MPI_Waitall(busy_count, &request[first_worker], MPI_STATUSES_IGNORE);
     }
     else {
-      if (p < (first_worker + busy_count)) {
-        int wait_count = (p - first_worker);
+      if (request_size < (first_worker + busy_count)) {
+        int wait_count = (request_size - first_worker);
         MPI_Waitall(wait_count, &request[first_worker], MPI_STATUSES_IGNORE);
         wait_count = busy_count - wait_count;
         MPI_Waitall(wait_count, &request[1], MPI_STATUSES_IGNORE);
@@ -160,26 +144,28 @@ void receive_results(const int busy_count, int first_worker, std::vector<MPI_Req
       if (this_size > 0) {
         unsigned int offset = result.size();
         result.resize(offset + this_size);
-        MPI_Recv(&result[offset], this_size, MPI_UNSIGNED_LONG_LONG, worker_id, RESULT_TAG, comm, MPI_STATUS_IGNORE);
+        int proc_id = (worker_id >= p) ? (worker_id + 1 - p) : worker_id;
+        MPI_Recv(&result[offset], this_size, MPI_UNSIGNED_LONG_LONG, proc_id, RESULT_TAG, comm, MPI_STATUS_IGNORE);
       }
-      worker_id = (worker_id == (p - 1)) ? 1 : (worker_id + 1);
+      worker_id = (worker_id == (2 * p - 2)) ? 1 : (worker_id + 1);
     }
 }
 
-void send_partial(bits_t partial, MPI_Comm& comm, const int p, const int my_rank,
+void send_partial(bits_t partial, MPI_Comm& comm, const int p,
                   std::vector<bits_t>& result, std::vector<unsigned int>& result_size,
                   int& busy_count, int& worker_id, std::vector<MPI_Request>& request)
 {
-    MPI_Send(&partial, 1, MPI_UNSIGNED_LONG_LONG, worker_id, PARTIAL_TAG, comm);
+    int proc_id = (worker_id >= p) ? (worker_id + 1 - p) : worker_id;
+    MPI_Send(&partial, 1, MPI_UNSIGNED_LONG_LONG, proc_id, PARTIAL_TAG, comm);
     int request_size = request.size();
     if (worker_id >= request_size) {
       request.resize(worker_id + 1);
     }
-    MPI_Irecv(&result_size[worker_id], 1, MPI_UNSIGNED, worker_id, SIZE_TAG, comm, &request[worker_id]);
+    MPI_Irecv(&result_size[worker_id], 1, MPI_UNSIGNED, proc_id, SIZE_TAG, comm, &request[worker_id]);
     ++busy_count;
-    worker_id = (worker_id == (p - 1)) ? 1 : (worker_id + 1);
-    if (busy_count == (p - 1)) {
-      receive_results(1, worker_id, request, result_size, result, comm, my_rank);
+    worker_id = (worker_id == (2 * p - 2)) ? 1 : (worker_id + 1);
+    if (busy_count == (2 * p - 2)) {
+      receive_results(1, worker_id, request, result_size, result, comm, p);
       --busy_count;
     }
 }
@@ -204,13 +190,13 @@ void explore_master(const unsigned int l, const unsigned int b,
           explore_master(l, b, flipped, comm, p, my_rank, result, result_size, busy_count, worker_id, request, idx + 1, currentd + 1);
         }
         else {
-          send_partial(flipped, comm, p, my_rank, result, result_size, busy_count, worker_id, request);
+          send_partial(flipped, comm, p, result, result_size, busy_count, worker_id, request);
         }
       }
     }
     else {
       // There is only one possibility, 0, if b is 0.
-      send_partial(number, comm, p, my_rank, result, result_size, busy_count, worker_id, request);
+      send_partial(number, comm, p, result, result_size, busy_count, worker_id, request);
     }
 }
 
@@ -229,7 +215,7 @@ std::vector<bits_t> findmotifs_master(const unsigned int n,
     MPI_Comm_rank(comm, &my_rank);
 
 
-    std::vector<unsigned int> result_size(p, 0);
+    std::vector<unsigned int> result_size(2 * p - 1, 0);
     std::vector<MPI_Request> request;
 
     int worker_id = 1;
@@ -241,7 +227,7 @@ std::vector<bits_t> findmotifs_master(const unsigned int n,
 
     if (busy_count > 0) {
       worker_id = (worker_id == (p - 1)) ? 1 : (worker_id + 1);
-      receive_results(busy_count, worker_id, request, result_size, result, comm, my_rank);
+      receive_results(busy_count, worker_id, request, result_size, result, comm, p);
     }
 
     return result;
