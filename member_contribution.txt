@@ -1,0 +1,21 @@
+Team Members
+============
+
+* Ankit Srivastava (gT Username: asrivastava64)
+Percentage contribution: 50.0%
+
+* Cansu Tetik (gT Username: ctetik3)
+Percentage contribution: 50.0%
+
+Description
+-----------
+Both the team members contributed to the development of algorithms, running the
+experiments, analysis of results, report writing, etc. equally.
+
+Even though the code development was also collaborative, making it hard to
+assign credit to a single team member, following broad distribution of work
+can be made:
+* Cansu implemented the sequential part of the algorithm, hamming function, as
+  well as the algorithms in workers, starting from a partial solution.
+* Ankit implemented the algorithm in master and the communication and
+  computation overlap related changes.
