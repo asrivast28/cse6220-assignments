@@ -8,9 +8,13 @@ void check_solution(const unsigned int n, const unsigned int d,
                     std::vector<bits_t>& result)
 {
     unsigned int j = 1;
+    // check if all the inputs, from 1 to n-1, are at a hamming distance
+    // of less than or equal to d from the given number
     while ((j < n) && (hamming(input[j], number) <= d)) {
       ++j;
     }
+    // if the number's hamming distance is less than or equal to d from
+    // all the given inputs then treat this as a result
     if (j == n) {
       result.push_back(number);
     }
@@ -32,15 +36,20 @@ void explore_solutions(const unsigned int n, const unsigned int l,
         // flip the bit by XOR-ing with appropriate number
         bits_t flipped = number ^ (base << idx);
         if ((currentd + 1) < b) {
+          // if we haven't flipped the maximum number of allowed bits yet,
+          // explore the solution space further below this level
           explore_solutions(n, l, d, input, b, flipped, result, idx + 1, currentd + 1);
         }
         else {
+          // if we have flipped the maximum number of allowed bits then check if the
+          // obtained number qualifies a solution
           check_solution(n, d, input, flipped, result);
         }
       }
     }
     else {
-      // There is only one possibility, 0, if b is 0.
+      // there is only one possibility, the given number, if b is 0
+      // check if the given number qualifies as a solution
       check_solution(n, d, input, number, result);
     }
 }

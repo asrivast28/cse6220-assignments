@@ -31,16 +31,19 @@ std::vector<bits_t> findmotifs(unsigned int n, unsigned int l, unsigned int d,
                                const bits_t* input);
 
 /**
- * @brief Explores the solution space obtained by flipping b bits in the l bit number.
+ * @brief Explores the solution space obtained by flipping b bits in the given l bit number.
  *
- * @param n          The number of input sequences.
- * @param l          The length (in bits) of each input sequence.
- * @param d          The number of bits that are allowed to differ between
- *                   the answers and all input sequences.
- * @param input      An array of the `n` input sequences. Represented as
- *                   64 bit integers.
- * @param number     The candidate solution to be checked.
- * @param result     A vector which stores all the solutions.
+ * @param n           The number of input sequences.
+ * @param l           The length (in bits) of each input sequence.
+ * @param d           The number of bits that are allowed to differ between
+ *                    the answers and all input sequences.
+ * @param input       An array of the `n` input sequences. Represented as
+ *                    64 bit integers.
+ * @param b           The maximum number of bits that can be flipped.
+ * @param number      The candidate solution to be checked.
+ * @param result      A vector which stores all the solutions.
+ * @param currentidx  Current bit index in the number.
+ * @param currentd    Number of bits that have been flipped in the number.
  */
 void explore_solutions(const unsigned int n, const unsigned int l,
                        const unsigned int d, const bits_t* input,
