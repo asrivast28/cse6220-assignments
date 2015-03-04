@@ -1,5 +1,13 @@
 # Makefile for HPC 6220 Programming Assignment 1
-CXX=mpic++
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),Linux)
+	CXX = mpic++
+	MPIRUN = mpirun
+endif
+ifeq ($(UNAME_S),Darwin)
+	CXX = mpicxx-openmpi-mp
+	MPIRUN = mpiexec-openmpi-mp
+endif
 #CCFLAGS=-Wall -g
 # activate for compiler optimizations:
 CCFLAGS=-Wall -O3
@@ -14,8 +22,8 @@ all: jacobi tests
 
 test: tests
 	echo "### TESTING SEQUENTIAL CODE ###";./seq_tests; \
-	echo "### TESTING WITH 4 PROCESSES ###"; mpirun -np 4 ./mpi_tests \
-	echo "### TESTING WITH 9 PROCESSES ###"; mpirun -np 9 ./mpi_tests
+	echo "### TESTING WITH 4 PROCESSES ###"; $(MPIRUN) -np 4 ./mpi_tests \
+	echo "### TESTING WITH 9 PROCESSES ###"; $(MPIRUN) -np 9 ./mpi_tests
 
 tests: seq_tests mpi_tests
 
