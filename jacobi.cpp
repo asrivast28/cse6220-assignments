@@ -42,24 +42,22 @@ void matrix_vector_mult(const int n, const int m, const double* A, const double*
 }
 
 // calculates L2-norm of (Ax - b)
-double calculate_l2_norm(const int n, const double* A, const double* b, const double* x)
+double calculate_l2_norm(const int n, const double* A, const double* b, const double* x, double* temp)
 {
   double l2_norm = 0.0;
-  std::vector<double> y(n);
-  matrix_vector_mult(n, A, x, &y[0]); 
+  matrix_vector_mult(n, A, x, temp); 
   for (int i = 0; i < n; ++i) {
-    l2_norm += pow(y[i] - b[i], 2.0);
+    l2_norm += pow(temp[i] - b[i], 2.0);
   }
   return sqrt(l2_norm);
 }
 
 // sets x to (b - Rx) / D
-void update_x(const int n, const double* b, double* x, const double* D, const double* R)
+void update_x(const int n, const double* b, double* x, const double* D, const double* R, double* temp)
 {
-  std::vector<double> y(n);
-  matrix_vector_mult(n, R, x, &y[0]); 
+  matrix_vector_mult(n, R, x, temp); 
   for (int i = 0; i < n; ++i) {
-    x[i] = (b[i] - y[i]) / D[i];
+    x[i] = (b[i] - temp[i]) / D[i];
   }
 }
 
@@ -79,15 +77,17 @@ void jacobi(const int n, double* A, double* b, double* x, int max_iter, double l
       R[i*n + i] = 0.0;
     }
 
+    // temporary buffer used by functions for storing intermediate values
+    std::vector<double> temp(n);
     // iterate until a maximum number of iterations has been reached
     for (int iter = 0; iter < max_iter; ++iter) {
       // calculate ||Ax - b||
-      double l2_norm = calculate_l2_norm(n, A, b, x);
+      double l2_norm = calculate_l2_norm(n, A, b, x, &temp[0]);
       // check if ||Ax - b|| > l
       if ((l2_norm - l2_termination) < DOUBLE_EPSILON) {
         break;
       }
       // update x otherwise
-      update_x(n, b, x, &D[0], &R[0]);
+      update_x(n, b, x, &D[0], &R[0], &temp[0]);
     }
 }
