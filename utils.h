@@ -47,7 +47,26 @@ inline int block_decompose_by_dim(const int n, MPI_Comm comm, int dim)
  *                  DECLARE YOUR OWN FUNCTIONS HERE                  *
  *********************************************************************/
 
-// ...
+//subcommunicator for rows
+inline MPI_Comm row_subcomm(MPI_Comm comm, int rank, int q)
+{
+    MPI_Comm row_comm;
+    int row;
+    row = rank/q;
+    MPI_Comm_split(comm, row, rank, &row_comm);
+    return row_comm;
+}
 
+
+//subcommunicator for columns
+inline MPI_Comm col_subcomm(MPI_Comm comm, int rank, int q)
+{
+    MPI_Comm col_comm;
+    int col;
+    col = rank%q;
+    MPI_Comm_split(comm, col, rank, &col_comm);
+    return col_comm;
+    
+}
 
 #endif // UTILS_H

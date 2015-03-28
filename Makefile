@@ -8,9 +8,9 @@ ifeq ($(UNAME_S),Darwin)
 	CXX = mpicxx-openmpi-mp
 	MPIRUN = mpiexec-openmpi-mp
 endif
-#CCFLAGS=-Wall -g
+CCFLAGS=-Wall -g
 # activate for compiler optimizations:
-CCFLAGS=-Wall -O3
+#CCFLAGS=-Wall -O3
 LDFLAGS=
 
 # set up google test
@@ -22,8 +22,8 @@ all: jacobi tests
 
 test: tests
 	echo "### TESTING SEQUENTIAL CODE ###";./seq_tests; \
-	echo "### TESTING WITH 4 PROCESSES ###"; $(MPIRUN) -np 4 ./mpi_tests \
-	echo "### TESTING WITH 9 PROCESSES ###"; $(MPIRUN) -np 9 ./mpi_tests
+	echo "### TESTING WITH 4 PROCESSES ###"; $(MPIRUN) -np 4 ./mpi_tests
+	# echo "### TESTING WITH 9 PROCESSES ###"; $(MPIRUN) -np 9 ./mpi_tests
 
 tests: seq_tests mpi_tests
 

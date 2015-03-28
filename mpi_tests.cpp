@@ -72,77 +72,77 @@ TEST(MpiTest, MatrixVectorMult1)
 }
 
 
-// test parallel MPI matrix vector multiplication
-TEST(MpiTest, Jacobi1)
-{
-    // simple 4 by 4 input matrix
-    double A[4*4] = {10., -1., 2., 0.,
-                           -1., 11., -1., 3.,
-                           2., -1., 10., -1.,
-                           0.0, 3., -1., 8.};
-    double b[4] =  {6., 25., -11., 15.};
-    double x[4];
-    double expected_x[4] = {1.0,  2.0, -1.0, 1.0};
-    int n = 4;
+//// test parallel MPI matrix vector multiplication
+//TEST(MpiTest, Jacobi1)
+//{
+//    // simple 4 by 4 input matrix
+//    double A[4*4] = {10., -1., 2., 0.,
+//                           -1., 11., -1., 3.,
+//                           2., -1., 10., -1.,
+//                           0.0, 3., -1., 8.};
+//    double b[4] =  {6., 25., -11., 15.};
+//    double x[4];
+//    double expected_x[4] = {1.0,  2.0, -1.0, 1.0};
+//    int n = 4;
+//
+//    // get grid communicator
+//    MPI_Comm grid_comm;
+//    get_grid_comm(&grid_comm);
+//
+//    // testing sequential matrix multiplication
+//    mpi_jacobi(n, A, b, x, grid_comm);
+//
+//    // checking if all values are correct (up to some error value)
+//    for (int i = 0; i < n; ++i)
+//    {
+//        EXPECT_NEAR(expected_x[i], x[i], 1e-5) << " element y[" << i << "] is wrong";
+//    }
+//}
 
-    // get grid communicator
-    MPI_Comm grid_comm;
-    get_grid_comm(&grid_comm);
-
-    // testing sequential matrix multiplication
-    mpi_jacobi(n, A, b, x, grid_comm);
-
-    // checking if all values are correct (up to some error value)
-    for (int i = 0; i < n; ++i)
-    {
-        EXPECT_NEAR(expected_x[i], x[i], 1e-5) << " element y[" << i << "] is wrong";
-    }
-}
-
-
-/**
- * Test the parallel code and compare the results with the sequential code.
- */
-TEST(MpiTest, JacobiCrossTest1)
-{
-    // test random matrixes, test parallel code with sequential solutions
-    std::vector<double> A;
-    std::vector<double> b;
-    std::vector<double> mpi_x;
-
-    // get grid communicator
-    MPI_Comm grid_comm;
-    get_grid_comm(&grid_comm);
-    int rank;
-    MPI_Comm_rank(grid_comm, &rank);
-
-    int n = 36;
-    // initialize data only on rank 0
-    if (rank == 0)
-    {
-        A = diag_dom_rand(n);
-        b = randn(n, 100.0, 50.0);
-    }
-
-    // getting sequential results
-    std::vector<double> x;
-    if (rank == 0)
-    {
-        x.resize(n);
-        jacobi(n, &A[0], &b[0], &x[0]);
-    }
-
-    // parallel jacobi
-    if (rank == 0)
-        mpi_x.resize(n);
-    mpi_jacobi(n, &A[0], &b[0], &mpi_x[0], grid_comm);
-
-    if (rank == 0)
-    {
-        // checking if all values are correct (up to some error value)
-        for (int i = 0; i < n; ++i)
-        {
-            EXPECT_NEAR(x[i], mpi_x[i], 1e-8) << " MPI solution x[" << i << "] differs from sequential result";
-        }
-    }
-}
+//
+///**
+// * Test the parallel code and compare the results with the sequential code.
+// */
+//TEST(MpiTest, JacobiCrossTest1)
+//{
+//    // test random matrixes, test parallel code with sequential solutions
+//    std::vector<double> A;
+//    std::vector<double> b;
+//    std::vector<double> mpi_x;
+//
+//    // get grid communicator
+//    MPI_Comm grid_comm;
+//    get_grid_comm(&grid_comm);
+//    int rank;
+//    MPI_Comm_rank(grid_comm, &rank);
+//
+//    int n = 36;
+//    // initialize data only on rank 0
+//    if (rank == 0)
+//    {
+//        A = diag_dom_rand(n);
+//        b = randn(n, 100.0, 50.0);
+//    }
+//
+//    // getting sequential results
+//    std::vector<double> x;
+//    if (rank == 0)
+//    {
+//        x.resize(n);
+//        jacobi(n, &A[0], &b[0], &x[0]);
+//    }
+//
+//    // parallel jacobi
+//    if (rank == 0)
+//        mpi_x.resize(n);
+//    mpi_jacobi(n, &A[0], &b[0], &mpi_x[0], grid_comm);
+//
+//    if (rank == 0)
+//    {
+//        // checking if all values are correct (up to some error value)
+//        for (int i = 0; i < n; ++i)
+//        {
+//            EXPECT_NEAR(x[i], mpi_x[i], 1e-8) << " MPI solution x[" << i << "] differs from sequential result";
+//        }
+//    }
+//}
