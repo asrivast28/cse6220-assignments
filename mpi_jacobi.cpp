@@ -320,6 +320,63 @@ void transpose_bcast_vector(const int n, double* col_vector, double* row_vector,
 void distributed_matrix_vector_mult(const int n, double* local_A, double* local_x, double* local_y, MPI_Comm comm)
 {
     // TODO
+    // TODO
+    
+    int grid_rank;
+    MPI_Comm_rank(comm, &grid_rank);
+    int p, q;
+    MPI_Comm_size(comm, &p);
+    q = (int)sqrt(p);
+    
+    MPI_Comm row_comm;
+    row_comm = row_subcomm(comm, grid_rank, q);
+    
+    int col_rank, row_rank;
+    int coords[2];
+    MPI_Cart_coords(comm, grid_rank, 2, coords);
+    col_rank = coords[0];
+    row_rank = coords[1];
+    
+    int scount = block_decompose(n, q, row_rank);
+    double *local_vector = (double *)malloc(scount*sizeof(double));
+    
+    //transpose the vector in local_vectors
+    transpose_bcast_vector(n, local_x, local_vector, comm);
+    
+    
+    //locally multiply local_A with local_vector into local_y
+    int row_count = block_decompose_by_dim(n, comm, 0);
+
+    int r = 0;
+    for(int i = 0; i < row_count; i++)
+    {
+        local_y[i] = 0;
+        for(int j = 0; j < scount; j++)
+        {
+            
+//            std::cout << "  rank: " << grid_rank << " local_A=[ " <<r << "]: "<< local_A[r] <<" c and local_vector[" << j << "] :" << local_vector[j] << std::endl;
+            local_y[i] += local_A[r]*local_vector[j];
+            r++;
+            
+        }
+       
+//            std::cout << "      rank: " << grid_rank << "   y[" << i << "] = " << local_y[i] << std::endl;
+    }
+    
+    
+    //reduce the local_y's to column
+    if(row_rank == 0)
+        MPI_Reduce(MPI_IN_PLACE, local_y, row_count, MPI_DOUBLE, MPI_SUM, 0, row_comm);
+    else
+        MPI_Reduce(local_y, local_y, row_count, MPI_DOUBLE, MPI_SUM, 0, row_comm);
+    
+//    if(row_rank == 0)
+//    {
+//        for(int a=0; a<row_count; a++)
+//            std::cout << "      rank: " << grid_rank << "scount = " << scount<< "   y[" << a << "] = " << local_y[a] << std::endl;
+//
+//    }
+
 }
 
 // Solves Ax = b using the iterative jacobi method
@@ -336,11 +393,6 @@ void distributed_jacobi(const int n, double* local_A, double* local_b, double* l
 void mpi_matrix_vector_mult(const int n, double* A,
                             double* x, double* y, MPI_Comm comm)
 {
-    int p, q, row_rank, col_rank, grid_rank;
-    MPI_Comm_size(comm, &p);
-    q = (int)sqrt(p);
-    MPI_Comm_rank(comm,&grid_rank);
-
 
     // distribute the array onto local processors!
     double* local_A = NULL;
@@ -359,19 +411,19 @@ void mpi_matrix_vector_mult(const int n, double* A,
     
     // allocate local result space
     double* local_y = new double[block_decompose_by_dim(n, comm, 0)];
-//    distributed_matrix_vector_mult(n, local_A, local_x, local_y, comm);
+    distributed_matrix_vector_mult(n, local_A, local_x, local_y, comm);
 
 
-    int rank_root = (grid_rank%q);
-    int scount = block_decompose(n, q, rank_root);
-    double* row_vector = new double[scount];
-    transpose_bcast_vector(n, local_x, row_vector, comm);
-    
-    for(int i = 0; i < scount; i++)
-        std::cout <<"       processor: " << grid_rank << " size: " << scount <<  " y["<< i << "] = " << row_vector[i] << std::endl;
+//    int rank_root = (grid_rank%q);
+//    int scount = block_decompose(n, q, rank_root);
+//    double* row_vector = new double[scount];
+//    transpose_bcast_vector(n, local_x, row_vector, comm);
+//    
+//    for(int i = 0; i < scount; i++)
+//        std::cout <<"       processor: " << grid_rank << " size: " << scount <<  " y["<< i << "] = " << row_vector[i] << std::endl;
     
     // gather results back to rank 0
-//    gather_vector(n, local_y, y, comm);
+    gather_vector(n, local_y, y, comm);
     
 }
 
