@@ -22,7 +22,7 @@
  */
 
 
-void distribute_vector(const int n, double* input_vector, double* local_vector, MPI_Comm comm)
+void distribute_vector(const int n, double* input_vector, double** local_vector, MPI_Comm comm)
 {
     // TODO
     int rank00, grid_rank;
@@ -59,7 +59,7 @@ void distribute_vector(const int n, double* input_vector, double* local_vector, 
     
     
     int local_size = block_decompose(n, q, col_rank);
-    local_vector = (double *)malloc(local_size*sizeof(double));
+    *local_vector = (double *)malloc(local_size*sizeof(double));
 
     
     if(grid_rank == rank00)
@@ -77,10 +77,10 @@ void distribute_vector(const int n, double* input_vector, double* local_vector, 
     //wait for all the processors in first column finish.
     MPI_Barrier(col_comm);
 
-    MPI_Scatterv(input_vector, scounts, displs, MPI_DOUBLE, local_vector, local_size, MPI_DOUBLE, rank00, col_comm);
+    MPI_Scatterv(input_vector, &scounts[0], &displs[0], MPI_DOUBLE, *local_vector, local_size, MPI_DOUBLE, rank00, col_comm);
 
-    for(int i = 0; i < block_decompose(n, q, col_rank); i++)
-        std::cout <<"processor: " << grid_rank << " local_x["<< i << "] = " << local_vector[i]<< std::endl;
+    //for(int i = 0; i < block_decompose(n, q, col_rank); i++)
+        //std::cout <<"processor: " << grid_rank << " local_x["<< i << "] = " << local_vector[i]<< std::endl;
     
     
 //    =              n: 4processor: 0 ccol rank: 0 local_vector[0] = 6
@@ -156,7 +156,7 @@ void gather_vector(const int n, double* local_vector, double* output_vector, MPI
 
 }
 
-void distribute_matrix(const int n, double* input_matrix, double* local_matrix, MPI_Comm comm)
+void distribute_matrix(const int n, double* input_matrix, double** local_matrix, MPI_Comm comm)
 {
     // TODO
     int rank00, grid_rank;
@@ -185,7 +185,7 @@ void distribute_matrix(const int n, double* input_matrix, double* local_matrix, 
     
     
     int local_size = row_count * col_count;
-    local_matrix = (double *)malloc(local_size * sizeof(double));
+    *local_matrix = (double *)malloc(local_size * sizeof(double));
    
     //create sub_matrices for every processor in the first row, and distribute the matrix within these processors.
     int scounts[q], displs[q];
@@ -272,7 +272,7 @@ void distribute_matrix(const int n, double* input_matrix, double* local_matrix, 
     MPI_Barrier(col_comm);
     
     
-    MPI_Scatterv(sub_matrix1d, scounts, displs, MPI_DOUBLE, local_matrix, scounts[col_rank], MPI_DOUBLE, 0 , col_comm);
+    MPI_Scatterv(sub_matrix1d, scounts, displs, MPI_DOUBLE, *local_matrix, scounts[col_rank], MPI_DOUBLE, 0 , col_comm);
     
 }
 
@@ -347,15 +347,15 @@ void mpi_matrix_vector_mult(const int n, double* A,
     // distribute the array onto local processors!
     double* local_A = NULL;
     double* local_x = NULL;
-    distribute_matrix(n, &A[0], local_A, comm);
-    distribute_vector(n, &x[0], local_x, comm);
+    // distribute_matrix(n, &A[0], &local_A, comm);
+    distribute_vector(n, &x[0], &local_x, comm);
     
     
     //I'm trying to access local_x here:
     
-    //if(grid_rank % q == 0)
-        //for(int i = 0; i < block_decompose(n, q, grid_rank/q); i++)
-            //std::cout <<"processor: " << grid_rank << " local_x["<< i << "] = " << local_x[i]<< std::endl;
+    if(grid_rank % q == 0)
+        for(int i = 0; i < block_decompose(n, q, grid_rank/q); i++)
+            std::cout <<"processor: " << grid_rank << " local_x["<< i << "] = " << local_x[i] << std::endl;
     
     
     
@@ -375,8 +375,8 @@ void mpi_jacobi(const int n, double* A, double* b, double* x, MPI_Comm comm,
     // distribute the array onto local processors!
     double* local_A = NULL;
     double* local_b = NULL;
-    distribute_matrix(n, &A[0], local_A, comm);
-    distribute_vector(n, &b[0], local_b, comm);
+    distribute_matrix(n, &A[0], &local_A, comm);
+    distribute_vector(n, &b[0], &local_b, comm);
 
     // allocate local result space
     double* local_x = new double[block_decompose_by_dim(n, comm, 0)];
