@@ -179,16 +179,15 @@ void distribute_matrix(const int n, double* input_matrix, double** local_matrix,
     int col_count = block_decompose_by_dim(n, comm, 1);
     
     
-    int local_size = row_count * col_count;
-    *local_matrix = (double *)malloc(local_size * sizeof(double));
+    *local_matrix = (double *)malloc(row_count * col_count * sizeof(double));
    
     //create sub_matrices for every processor in the first row, and distribute the matrix within these processors.
     int scounts[q], displs[q];
-    int offset = 0;
     
     if(grid_rank == rank00)
     {
-        
+        int offset = 0;
+
         for (int i = 0; i < q; i++)
         {
             displs[i] = offset;
@@ -211,8 +210,9 @@ void distribute_matrix(const int n, double* input_matrix, double** local_matrix,
     
     if(col_rank == 0)
     {
-        sub_matrix1d = (double *)malloc((n * col_count) * sizeof(double));
-        MPI_Scatterv(input_matrix, scounts, displs, MPI_DOUBLE, sub_matrix1d, scounts[row_rank], MPI_DOUBLE, rank00, row_comm);
+        int local_size = block_decompose(n, q, row_rank) * n;
+        sub_matrix1d = (double *)malloc(local_size * sizeof(double));
+        MPI_Scatterv(input_matrix, scounts, displs, MPI_DOUBLE, sub_matrix1d, local_size, MPI_DOUBLE, rank00, row_comm);
        
         
         //copy 1 dimensional sub_matrix to 2d sub_matrix as rows and columns for distribution
@@ -245,10 +245,10 @@ void distribute_matrix(const int n, double* input_matrix, double** local_matrix,
     
     //distribute the sub_matrices within their columns to finish the matrix distribution.
     
-        offset = 0;
-
     if(col_rank == 0)
     {
+            int offset = 0;
+
             for (int i = 0; i < q; i++)
             {
                 displs[i] = offset;
@@ -262,8 +262,9 @@ void distribute_matrix(const int n, double* input_matrix, double** local_matrix,
     
     MPI_Barrier(col_comm);
     
+    int local_size = block_decompose(n, q, col_rank) * col_count;
     
-    MPI_Scatterv(sub_matrix1d, scounts, displs, MPI_DOUBLE, *local_matrix, scounts[col_rank], MPI_DOUBLE, 0 , col_comm);
+    MPI_Scatterv(sub_matrix1d, scounts, displs, MPI_DOUBLE, *local_matrix, local_size, MPI_DOUBLE, 0 , col_comm);
     
 }
 
@@ -297,8 +298,8 @@ void transpose_bcast_vector(const int n, double* col_vector, double* row_vector,
 
     if(grid_rank == 0)
     {
-        int scount = block_decompose(n, q, rank_root);
-        memcpy (row_vector, col_vector, scount*sizeof(double));
+        int count = block_decompose(n, q, rank_root);
+        memcpy (row_vector, col_vector, count*sizeof(double));
     }
     else if(row_rank == 0) // sending processor
     {
@@ -307,12 +308,12 @@ void transpose_bcast_vector(const int n, double* col_vector, double* row_vector,
     }
     else if(col_rank == row_rank)//receiving processor
     {
-        int scount = block_decompose(n, q, col_rank);
-        MPI_Recv(row_vector, scount, MPI_DOUBLE, 0, 0, row_comm, &status);
+        int rcount = block_decompose(n, q, col_rank);
+        MPI_Recv(row_vector, rcount, MPI_DOUBLE, 0, 0, row_comm, &status);
     }
 
-    int scount = block_decompose(n, q, row_rank);
-    MPI_Bcast(row_vector, scount, MPI_DOUBLE, row_rank, col_comm);
+    int bcount = block_decompose(n, q, row_rank);
+    MPI_Bcast(row_vector, bcount, MPI_DOUBLE, row_rank, col_comm);
     
 }
 
