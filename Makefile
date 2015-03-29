@@ -23,7 +23,7 @@ all: jacobi tests
 test: tests
 	echo "### TESTING SEQUENTIAL CODE ###";./seq_tests; \
 	echo "### TESTING WITH 4 PROCESSES ###"; $(MPIRUN) -np 4 ./mpi_tests
-	# echo "### TESTING WITH 9 PROCESSES ###"; $(MPIRUN) -np 9 ./mpi_tests
+	echo "### TESTING WITH 9 PROCESSES ###"; $(MPIRUN) -np 9 ./mpi_tests
 
 tests: seq_tests mpi_tests
 

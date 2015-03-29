@@ -294,23 +294,25 @@ void transpose_bcast_vector(const int n, double* col_vector, double* row_vector,
 //    *  broadcasts the message among it's column using a column sub-communicator.
     
     int rank_root = (grid_rank%q);
-    int scount = block_decompose(n, q, rank_root);
 
     if(grid_rank == 0)
-        memcpy ( row_vector, col_vector, scount*sizeof(double) );
-    
+    {
+        int scount = block_decompose(n, q, rank_root);
+        memcpy (row_vector, col_vector, scount*sizeof(double));
+    }
     else if(row_rank == 0) // sending processor
     {
+        int scount = block_decompose(n, q, col_rank);
         MPI_Send(col_vector, scount, MPI_DOUBLE, col_rank, 0, row_comm);
     }
     else if(col_rank == row_rank)//receiving processor
     {
+        int scount = block_decompose(n, q, col_rank);
         MPI_Recv(row_vector, scount, MPI_DOUBLE, 0, 0, row_comm, &status);
     }
 
+    int scount = block_decompose(n, q, row_rank);
     MPI_Bcast(row_vector, scount, MPI_DOUBLE, row_rank, col_comm);
-
-
     
 }
 
