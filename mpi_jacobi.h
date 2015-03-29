@@ -68,7 +68,7 @@
  *                      to their block distirbuted size.
  * @param comm          A 2d cartesian grid communicator.
  */
-void distribute_vector(const int n, double* input_vector, double* local_vector,
+void distribute_vector(const int n, double* input_vector, double** local_vector,
                        MPI_Comm comm);
 
 /**
