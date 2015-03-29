@@ -74,9 +74,6 @@ void distribute_vector(const int n, double* input_vector, double** local_vector,
         
     }
     
-    //wait for all the processors in first column finish.
-    MPI_Barrier(col_comm);
-
     MPI_Scatterv(input_vector, &scounts[0], &displs[0], MPI_DOUBLE, *local_vector, local_size, MPI_DOUBLE, rank00, col_comm);
 
     //for(int i = 0; i < block_decompose(n, q, col_rank); i++)
@@ -141,10 +138,6 @@ void gather_vector(const int n, double* local_vector, double* output_vector, MPI
         }
     }
     
-    //wait for all the processors in first column finish.
-    MPI_Barrier(col_comm);
-    
-    
     MPI_Gatherv(local_vector, local_size, MPI_DOUBLE, output_vector, scounts, displs, MPI_DOUBLE, rank00, col_comm);
     
 
@@ -202,12 +195,8 @@ void distribute_matrix(const int n, double* input_matrix, double** local_matrix,
     int rank_root;
     
     rank_root = grid_rank%q;
+    
 
-    MPI_Barrier(comm);
-    
-    
-    
-    
     if(col_rank == 0)
     {
         int local_size = block_decompose(n, q, row_rank) * n;
@@ -259,8 +248,6 @@ void distribute_matrix(const int n, double* input_matrix, double** local_matrix,
         
     }
     
-    
-    MPI_Barrier(col_comm);
     
     int local_size = block_decompose(n, q, col_rank) * col_count;
     
