@@ -41,7 +41,7 @@ void distribute_vector(const int n, double* input_vector, double** local_vector,
     
    if(grid_rank % q == 0)
    {
-       col_comm = col_subcomm(comm, grid_rank, q);
+       col_comm = col_subcomm(comm);
        MPI_Cart_coords(comm, grid_rank, 2, coords);
        col_rank = coords[0];
    }
@@ -50,7 +50,7 @@ void distribute_vector(const int n, double* input_vector, double** local_vector,
     //compute the column subcommunicator then return
     else
     {
-        col_comm = col_subcomm(comm, grid_rank, q);
+        col_comm = col_subcomm(comm);
         return;
     }
     
@@ -114,7 +114,7 @@ void gather_vector(const int n, double* local_vector, double* output_vector, MPI
     
     if(grid_rank%q == 0)
     {
-        col_comm = col_subcomm(comm, grid_rank, q);
+        col_comm = col_subcomm(comm);
         MPI_Cart_coords(comm, grid_rank, 2, coords);
         col_rank = coords[0];
     }
@@ -123,7 +123,7 @@ void gather_vector(const int n, double* local_vector, double* output_vector, MPI
     //compute the column subcommunicator then return
     else
     {
-        col_comm1 = col_subcomm(comm, grid_rank, q);
+        col_comm1 = col_subcomm(comm);
         return;
     }
     
@@ -169,13 +169,13 @@ void distribute_matrix(const int n, double* input_matrix, double** local_matrix,
     q = (int)sqrt(p);
     
     MPI_Comm row_comm;
-    row_comm = row_subcomm(comm, grid_rank, q);
+    row_comm = row_subcomm(comm);
     
     int row_rank;
     MPI_Comm_rank(row_comm, &row_rank);
     
     MPI_Comm col_comm;
-    col_comm = col_subcomm(comm, grid_rank, q);
+    col_comm = col_subcomm(comm);
     
     int col_rank;
     MPI_Comm_rank(col_comm, &col_rank);
@@ -290,8 +290,8 @@ void transpose_bcast_vector(const int n, double* col_vector, double* row_vector,
     q = (int)sqrt(p);
     
     MPI_Comm row_comm, col_comm;
-    col_comm = col_subcomm(comm, grid_rank, q);
-    row_comm = row_subcomm(comm, grid_rank, q);
+    col_comm = col_subcomm(comm);
+    row_comm = row_subcomm(comm);
     
     int col_rank, row_rank;
     int coords[2];
@@ -340,7 +340,7 @@ void distributed_matrix_vector_mult(const int n, double* local_A, double* local_
     q = (int)sqrt(p);
     
     MPI_Comm row_comm;
-    row_comm = row_subcomm(comm, grid_rank, q);
+    row_comm = row_subcomm(comm);
     
     int col_rank, row_rank;
     int coords[2];
