@@ -395,6 +395,87 @@ void distributed_jacobi(const int n, double* local_A, double* local_b, double* l
                 MPI_Comm comm, int max_iter, double l2_termination)
 {
     // TODO
+    // TODO
+    
+    int rank00, grid_rank;
+    int coords[2] = {0, 0};
+    MPI_Cart_rank(comm, coords, &rank00);
+    MPI_Comm_rank(comm, &grid_rank);
+    
+    int p, q;
+    MPI_Comm_size(comm, &p);
+    q = (int)sqrt(p);
+    
+    
+    MPI_Comm row_comm;
+    row_comm = row_subcomm(comm);
+    
+    int row_rank;
+    MPI_Comm_rank(row_comm, &row_rank);
+    
+    MPI_Comm col_comm;
+    col_comm = col_subcomm(comm);
+    
+    int col_rank;
+    MPI_Comm_rank(col_comm, &col_rank);
+    
+    int row_count = block_decompose_by_dim(n, comm, 0);
+    int col_count = block_decompose_by_dim(n, comm, 1);
+    
+    int local_size = row_count * col_count;
+    double * local_D_mat = (double *)malloc(local_size * sizeof(double));
+    double * local_R = (double *)malloc(local_size * sizeof(double));
+    
+    
+    //find the position of the element in processor, according to the global matrix
+    int first_element_index = 0;
+    int row_root = (grid_rank / q) * q;
+    
+    for(int i = 0; i < row_root; i++)
+    {
+        first_element_index+= block_decompose(n, q, i/q) * block_decompose(n, q, i%q);
+    }
+    
+    for(int i = row_root; i < grid_rank; i++)
+    {
+        first_element_index+= block_decompose(n, q, (i%q));
+    }
+    
+    
+    //fill D_mat
+    int global_index;
+    for(int i = 0; i < local_size; i++)
+    {
+        global_index = first_element_index + ((i/col_count) * n) + i%col_count;
+        if(global_index%(n+1) == 0)
+        {
+            local_D_mat[i] = local_A[i];
+        }
+        else
+            local_D_mat[i] = 0;
+    }
+    
+    
+    
+    //fill R
+    for(int i = 0; i < local_size; i++)
+        local_R[i] = local_A[i] - local_D_mat[i];
+    
+    
+        for(int i = 0; i < local_size; i++)
+            std::cout << "          RANK: " << grid_rank << " local_D[" << i << "] :"  <<local_D_mat[i] << " local_R[" << i << "] : " << local_R[i] << " local_A[" << i << "] : " << local_A[i] <<std::endl;
+    
+    //init x to 0.clear
+    
+    if(grid_rank % q == 0)
+    {
+        for(int i = 0; i < row_count; i++)
+            local_x[i] = 0;
+    }
+    
+    //Jacobi Method
+
+    
 }
 
 

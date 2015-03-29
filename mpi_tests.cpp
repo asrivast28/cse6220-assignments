@@ -72,32 +72,32 @@ TEST(MpiTest, MatrixVectorMult1)
 }
 
 
-//// test parallel MPI matrix vector multiplication
-//TEST(MpiTest, Jacobi1)
-//{
-//    // simple 4 by 4 input matrix
-//    double A[4*4] = {10., -1., 2., 0.,
-//                           -1., 11., -1., 3.,
-//                           2., -1., 10., -1.,
-//                           0.0, 3., -1., 8.};
-//    double b[4] =  {6., 25., -11., 15.};
-//    double x[4];
-//    double expected_x[4] = {1.0,  2.0, -1.0, 1.0};
-//    int n = 4;
-//
-//    // get grid communicator
-//    MPI_Comm grid_comm;
-//    get_grid_comm(&grid_comm);
-//
-//    // testing sequential matrix multiplication
-//    mpi_jacobi(n, A, b, x, grid_comm);
-//
-//    // checking if all values are correct (up to some error value)
-//    for (int i = 0; i < n; ++i)
-//    {
-//        EXPECT_NEAR(expected_x[i], x[i], 1e-5) << " element y[" << i << "] is wrong";
-//    }
-//}
+// test parallel MPI matrix vector multiplication
+TEST(MpiTest, Jacobi1)
+{
+    // simple 4 by 4 input matrix
+    double A[4*4] = {10., -1., 2., 0.,
+                           -1., 11., -1., 3.,
+                           2., -1., 10., -1.,
+                           0.0, 3., -1., 8.};
+    double b[4] =  {6., 25., -11., 15.};
+    double x[4];
+    double expected_x[4] = {1.0,  2.0, -1.0, 1.0};
+    int n = 4;
+
+    // get grid communicator
+    MPI_Comm grid_comm;
+    get_grid_comm(&grid_comm);
+
+    // testing sequential matrix multiplication
+    mpi_jacobi(n, A, b, x, grid_comm);
+
+    // checking if all values are correct (up to some error value)
+    for (int i = 0; i < n; ++i)
+    {
+        EXPECT_NEAR(expected_x[i], x[i], 1e-5) << " element y[" << i << "] is wrong";
+    }
+}
 
 //
 ///**
