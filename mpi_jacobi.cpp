@@ -55,7 +55,7 @@ void distribute_vector(const int n, double* input_vector, double** local_vector,
     }
     
 
-    int scounts[q], displs[q];
+    int *scounts = NULL, *displs = NULL;
     
     
     int local_size = block_decompose(n, q, col_rank);
@@ -65,6 +65,10 @@ void distribute_vector(const int n, double* input_vector, double** local_vector,
     if(grid_rank == rank00)
     {
         int offset = 0;
+
+        displs = (int *)malloc(q * sizeof(int));
+        scounts = (int *)malloc(q * sizeof(int));
+        
         for (int i = 0; i < q; i++)
         {
             displs[i] = offset;
@@ -75,6 +79,9 @@ void distribute_vector(const int n, double* input_vector, double** local_vector,
     }
     
     MPI_Scatterv(input_vector, &scounts[0], &displs[0], MPI_DOUBLE, *local_vector, local_size, MPI_DOUBLE, rank00, col_comm);
+
+    free(displs);
+    free(scounts);
 
     //for(int i = 0; i < block_decompose(n, q, col_rank); i++)
         //std::cout <<"processor: " << grid_rank << " local_x["<< i << "] = " << local_vector[i]<< std::endl;
@@ -121,7 +128,7 @@ void gather_vector(const int n, double* local_vector, double* output_vector, MPI
     }
     
     
-    int scounts[q], displs[q];
+    int *scounts = NULL, *displs = NULL;
     
     int local_size = block_decompose(n, q, col_rank);
     //local_vector = (double *)malloc(local_size*sizeof(double));
@@ -130,6 +137,10 @@ void gather_vector(const int n, double* local_vector, double* output_vector, MPI
     if(grid_rank == rank00)
     {
         int offset = 0;
+
+        displs = (int *)malloc(q * sizeof(int));
+        scounts = (int *)malloc(q * sizeof(int));
+        
         for (int i = 0; i < q; i++)
         {
             displs[i] = offset;
@@ -139,8 +150,9 @@ void gather_vector(const int n, double* local_vector, double* output_vector, MPI
     }
     
     MPI_Gatherv(local_vector, local_size, MPI_DOUBLE, output_vector, scounts, displs, MPI_DOUBLE, rank00, col_comm);
-    
 
+    free(displs);
+    free(scounts);
 
 }
 
@@ -175,11 +187,14 @@ void distribute_matrix(const int n, double* input_matrix, double** local_matrix,
     *local_matrix = (double *)malloc(row_count * col_count * sizeof(double));
    
     //create sub_matrices for every processor in the first row, and distribute the matrix within these processors.
-    int scounts[q], displs[q];
+    int *scounts = NULL, *displs = NULL;
     
     if(grid_rank == rank00)
     {
         int offset = 0;
+
+        displs = (int *)malloc(q * sizeof(int));
+        scounts = (int *)malloc(q * sizeof(int));
 
         for (int i = 0; i < q; i++)
         {
@@ -238,6 +253,11 @@ void distribute_matrix(const int n, double* input_matrix, double** local_matrix,
     {
             int offset = 0;
 
+            if (displs == NULL)
+                displs = (int*)malloc(q * sizeof(int));
+            if (scounts == NULL)
+                scounts = (int*)malloc(q * sizeof(int));
+
             for (int i = 0; i < q; i++)
             {
                 displs[i] = offset;
@@ -252,6 +272,9 @@ void distribute_matrix(const int n, double* input_matrix, double** local_matrix,
     int local_size = block_decompose(n, q, col_rank) * col_count;
     
     MPI_Scatterv(sub_matrix1d, scounts, displs, MPI_DOUBLE, *local_matrix, local_size, MPI_DOUBLE, 0 , col_comm);
+
+    free(displs);
+    free(scounts);
     
 }
 
@@ -412,7 +435,9 @@ void mpi_matrix_vector_mult(const int n, double* A,
     
     // gather results back to rank 0
     gather_vector(n, local_y, y, comm);
-    
+
+    free(local_A); 
+    free(local_x);
 }
 
 // wraps the distributed jacobi function
