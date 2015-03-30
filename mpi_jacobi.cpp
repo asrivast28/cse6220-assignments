@@ -413,61 +413,99 @@ void distributed_jacobi(const int n, double* local_A, double* local_b, double* l
 
     int row_count = block_decompose_by_dim(n, comm, 0);
     int col_count = block_decompose_by_dim(n, comm, 1);
-    
+
+    // pointer to local diagonal matrix
+    double *local_D = NULL;
+
     int local_size = row_count * col_count;
-    double * local_D_mat = (double *)malloc(local_size * sizeof(double));
-    double * local_R = (double *)malloc(local_size * sizeof(double));
-    
-    
-    //find the position of the element in processor, according to the global matrix
-    int first_element_index = 0;
-    int row_root = (grid_rank / q) * q;
-    
-    for(int i = 0; i < row_root; i++)
+    double *local_R = (double *)malloc(local_size * sizeof(double));
+    // assign local A matrix to local R matrix
+    memcpy(local_R, local_A, local_size * sizeof(double));
+
+    // check if the current processor is a diagonal processor or the first column
+    if ((row_rank == col_rank) || (row_rank == 0))
     {
-        first_element_index+= block_decompose(n, q, i/q) * block_decompose(n, q, i%q);
-    }
-    
-    for(int i = row_root; i < grid_rank; i++)
-    {
-        first_element_index+= block_decompose(n, q, (i%q));
-    }
-    
-    
-    //fill D_mat
-    int global_index;
-    for(int i = 0; i < local_size; i++)
-    {
-        global_index = first_element_index + ((i/col_count) * n) + i%col_count;
-        if(global_index%(n+1) == 0)
+        // assign memory for diagonal elements now
+        local_D = (double *)malloc(row_count * sizeof(double));
+        if (row_rank == col_rank)
         {
-            local_D_mat[i] = local_A[i];
+            // fill diagonal elements and set the corresponding elements in R to 0.0
+            for (int i = 0; i < row_count; ++i)
+            {
+                local_D[i] = local_A[i * row_count + i];
+                local_R[i * row_count + i] = 0.0;
+            }
         }
-        else
-            local_D_mat[i] = 0;
+
+        if (row_rank != 0)
+        {
+            // send all local D from diagonal processors to the first column of processors
+            MPI_Send(local_D, row_count, MPI_DOUBLE, 0, 0, row_comm);
+            // now free the memory
+            free(local_D);
+            local_D = NULL;
+        }
+        else if (col_rank != 0)
+        {
+            MPI_Recv(local_D, row_count, MPI_DOUBLE, col_rank, 0, row_comm, MPI_STATUS_IGNORE);
+        }
     }
-    
-    
-    
-    //fill R
-    for(int i = 0; i < local_size; i++)
-        local_R[i] = local_A[i] - local_D_mat[i];
-    
-    
-        for(int i = 0; i < local_size; i++)
-            std::cout << "          RANK: " << grid_rank << " local_D[" << i << "] :"  <<local_D_mat[i] << " local_R[" << i << "] : " << local_R[i] << " local_A[" << i << "] : " << local_A[i] <<std::endl;
-    
-    //init x to 0.clear
-    
-    if(grid_rank % q == 0)
+
+    //if (row_rank == 0)
+        //for(int i = 0; i < row_count; i++)
+            //std::cout << "          RANK: " << grid_rank << " local_D[" << i << "] :"  <<local_D[i] << " local_R[" << i << "] : " << local_R[i] << " local_A[" << i << "] : " << local_A[i] <<std::endl;
+
+    //init x to 0
+    if(row_rank == 0)
     {
         for(int i = 0; i < row_count; i++)
+        {
             local_x[i] = 0;
+        }
     }
 
     //Jacobi Method
 
-    
+    // temporary buffer
+    double temp[row_count];
+    for (int iter = 0; iter < max_iter; ++iter)
+    {
+        // first calculate R*x
+        distributed_matrix_vector_mult(n, local_R, local_x, temp, comm);
+        // update x in the first column
+        if (row_rank == 0)
+        {
+            for (int i = 0; i < row_count; ++i)
+            {
+                local_x[i] = (local_b[i] - temp[i]) / local_D[i];
+            }
+        }
+        //calculate A*x
+        distributed_matrix_vector_mult(n, local_A, local_x, temp, comm);
+
+        // l2 norm calculations
+        double l2_norm = 0.0;
+        // only first column participates in the calculations
+        if (row_rank == 0)
+        {
+            for (int i = 0; i < row_count; ++i)
+            {
+                l2_norm += pow(temp[i] - local_b[i], 2.0);
+            }
+        }
+        // the value of l2 norm is required in all the processors
+        MPI_Allreduce(MPI_IN_PLACE, &l2_norm, 1, MPI_DOUBLE, MPI_SUM, comm);
+        l2_norm = sqrt(l2_norm);
+        // check the termination condition
+        if ((l2_norm - l2_termination) < DOUBLE_EPSILON)
+        {
+            break;
+        }
+    }
+
+    // free locally allocated memory
+    free(local_D);
+    free(local_R);
 }
 
 

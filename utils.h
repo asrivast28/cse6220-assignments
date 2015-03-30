@@ -15,6 +15,8 @@
 
 #include <mpi.h>
 
+#include <limits>
+
 /*********************************************************************
  * DO NOT CHANGE THE FUNCTION SIGNATURE OF THE FOLLOWING 3 FUNCTIONS *
  *********************************************************************/
@@ -46,6 +48,9 @@ inline int block_decompose_by_dim(const int n, MPI_Comm comm, int dim)
 /*********************************************************************
  *                  DECLARE YOUR OWN FUNCTIONS HERE                  *
  *********************************************************************/
+
+// epsilon used for comparing double elements
+const double DOUBLE_EPSILON = std::numeric_limits<double>::epsilon();
 
 //subcommunicator for rows
 inline MPI_Comm row_subcomm(MPI_Comm comm)

@@ -6,6 +6,7 @@
  * Copyright (c) 2014 Georgia Institute of Technology. All Rights Reserved.
  */
 #include "jacobi.h"
+#include "utils.h"
 
 /*
  * TODO: Implement your solutions here
@@ -14,7 +15,6 @@
 // my implementation:
 #include <iostream>
 #include <math.h>
-#include <limits>
 #include <vector>
 
 // Calculates y = A*x for a square n-by-n matrix A, and n-dimensional vectors x
@@ -60,9 +60,6 @@ void update_x(const int n, const double* b, double* x, const double* D, const do
     x[i] = (b[i] - temp[i]) / D[i];
   }
 }
-
-// epsilon used for comparing double elements
-const double DOUBLE_EPSILON = std::numeric_limits<double>::epsilon();
 
 // implements the sequential jacobi method
 void jacobi(const int n, double* A, double* b, double* x, int max_iter, double l2_termination)
