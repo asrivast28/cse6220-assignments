@@ -470,17 +470,7 @@ void distributed_jacobi(const int n, double* local_A, double* local_b, double* l
     double temp[row_count];
     for (int iter = 0; iter < max_iter; ++iter)
     {
-        // first calculate R*x
-        distributed_matrix_vector_mult(n, local_R, local_x, temp, comm);
-        // update x in the first column
-        if (row_rank == 0)
-        {
-            for (int i = 0; i < row_count; ++i)
-            {
-                local_x[i] = (local_b[i] - temp[i]) / local_D[i];
-            }
-        }
-        //calculate A*x
+        // calculate A*x
         distributed_matrix_vector_mult(n, local_A, local_x, temp, comm);
 
         // l2 norm calculations
@@ -491,15 +481,35 @@ void distributed_jacobi(const int n, double* local_A, double* local_b, double* l
             for (int i = 0; i < row_count; ++i)
             {
                 l2_norm += pow(temp[i] - local_b[i], 2.0);
+                //std::cout << iter << ":" << local_x[i] << "," << temp[i] << std::endl;
+                //std::cout << local_A[0] << std::endl;
+                //std::cout.flush();
+                //std::cout << col_rank << ":" << temp[i] << "," << local_b[i] << std::endl;
             }
         }
         // the value of l2 norm is required in all the processors
         MPI_Allreduce(MPI_IN_PLACE, &l2_norm, 1, MPI_DOUBLE, MPI_SUM, comm);
         l2_norm = sqrt(l2_norm);
+        //if (grid_rank == 0)
+        //{
+          //std::cout << "parallel:" << l2_norm << std::endl;
+          //std::cout.flush();
+        //}
         // check the termination condition
         if ((l2_norm - l2_termination) < DOUBLE_EPSILON)
         {
             break;
+        }
+
+        // now update x
+        distributed_matrix_vector_mult(n, local_R, local_x, temp, comm);
+        // update x in the first column
+        if (row_rank == 0)
+        {
+            for (int i = 0; i < row_count; ++i)
+            {
+                local_x[i] = (local_b[i] - temp[i]) / local_D[i];
+            }
         }
     }
 
