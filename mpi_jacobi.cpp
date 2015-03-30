@@ -142,17 +142,20 @@ void gather_vector(const int n, double* local_vector, double* output_vector, MPI
 
 void local_transpose(const int row, const int col, double* matrix)
 {
-  double* temp = (double *)malloc(row * col * sizeof(double));
-  memcpy(temp, matrix, row * col * sizeof(double));
-  for(int i = 0; i < row; ++i)
-  {
-    for(int j = 0; j < col; ++j)
+    int count= row*col;
+    for (int x= 0; x<col; ++x)
     {
-      //std::cout << (j * row + i) << ":" << (i * col + j) << std::endl;
-      matrix[j * row + i] = temp[i * col + j];
+        int count_adjustment= col - x - 1;
+        
+        for (int y= 0, step= 1; y<row; ++y, step+= count_adjustment)
+        {
+            int last= count - (y+x*row);
+            int first= last - step;
+                
+            std::rotate(matrix + first, matrix + first + 1, matrix + last);
+        }
     }
-  }
-  free(temp);
+    
 }
 
 void distribute_matrix(const int n, double* input_matrix, double** local_matrix, MPI_Comm comm)
