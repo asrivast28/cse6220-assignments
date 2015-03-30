@@ -17,20 +17,12 @@
 #include <math.h>
 #include <vector>
 
-/*
- * TODO: Implement your solutions here
- */
-
 
 void distribute_vector(const int n, double* input_vector, double** local_vector, MPI_Comm comm)
 {
-    // TODO
-    int rank00, grid_rank;
-    int coords00[2] = {0, 0};
-    MPI_Cart_rank(comm, coords00, &rank00);
-
-
+    int grid_rank;
     MPI_Comm_rank(comm, &grid_rank);
+
     int p, q;
     MPI_Comm_size(comm, &p);
     q = (int)sqrt(p);
@@ -60,7 +52,7 @@ void distribute_vector(const int n, double* input_vector, double** local_vector,
     *local_vector = (double *)malloc(local_size * sizeof(double));
 
 
-    if(grid_rank == rank00)
+    if(col_rank == 0)
     {
         int offset = 0;
 
@@ -76,7 +68,7 @@ void distribute_vector(const int n, double* input_vector, double** local_vector,
 
     }
 
-    MPI_Scatterv(input_vector, &scounts[0], &displs[0], MPI_DOUBLE, *local_vector, local_size, MPI_DOUBLE, rank00, col_comm);
+    MPI_Scatterv(input_vector, &scounts[0], &displs[0], MPI_DOUBLE, *local_vector, local_size, MPI_DOUBLE, 0, col_comm);
 
     free(displs);
     free(scounts);
@@ -95,33 +87,27 @@ void distribute_vector(const int n, double* input_vector, double** local_vector,
 // gather the local vector distributed among (i,0) to the processor (0,0)
 void gather_vector(const int n, double* local_vector, double* output_vector, MPI_Comm comm)
 {
-    // TODO
-    int rank00, grid_rank;
-    int coords00[2] = {0, 0};
-    MPI_Cart_rank(comm, coords00, &rank00);
-
-
+    int grid_rank;
     MPI_Comm_rank(comm, &grid_rank);
+
     int p, q;
     MPI_Comm_size(comm, &p);
     q = (int)sqrt(p);
 
-    MPI_Comm col_comm, col_comm1;
+    MPI_Comm col_comm;
     int col_rank;
-    int coords[2];
 
     if(grid_rank%q == 0)
     {
         col_comm = col_subcomm(comm);
-        MPI_Cart_coords(comm, grid_rank, 2, coords);
-        col_rank = coords[0];
+        MPI_Comm_rank(col_comm, &col_rank);
     }
 
     //not the first column
     //compute the column subcommunicator then return
     else
     {
-        col_comm1 = col_subcomm(comm);
+        col_comm = col_subcomm(comm);
         return;
     }
 
@@ -132,7 +118,7 @@ void gather_vector(const int n, double* local_vector, double* output_vector, MPI
     //local_vector = (double *)malloc(local_size*sizeof(double));
 
 
-    if(grid_rank == rank00)
+    if(col_rank == 0)
     {
         int offset = 0;
 
@@ -147,16 +133,30 @@ void gather_vector(const int n, double* local_vector, double* output_vector, MPI
         }
     }
 
-    MPI_Gatherv(local_vector, local_size, MPI_DOUBLE, output_vector, scounts, displs, MPI_DOUBLE, rank00, col_comm);
+    MPI_Gatherv(local_vector, local_size, MPI_DOUBLE, output_vector, scounts, displs, MPI_DOUBLE, 0, col_comm);
 
     free(displs);
     free(scounts);
 
 }
 
+void local_transpose(const int row, const int col, double* matrix)
+{
+  double* temp = (double *)malloc(row * col * sizeof(double));
+  memcpy(temp, matrix, row * col * sizeof(double));
+  for(int i = 0; i < row; ++i)
+  {
+    for(int j = 0; j < col; ++j)
+    {
+      //std::cout << (j * row + i) << ":" << (i * col + j) << std::endl;
+      matrix[j * row + i] = temp[i * col + j];
+    }
+  }
+  free(temp);
+}
+
 void distribute_matrix(const int n, double* input_matrix, double** local_matrix, MPI_Comm comm)
 {
-    // TODO
     int rank00, grid_rank;
     int coords[2] = {0, 0};
     MPI_Cart_rank(comm, coords, &rank00);
@@ -182,7 +182,8 @@ void distribute_matrix(const int n, double* input_matrix, double** local_matrix,
     int col_count = block_decompose_by_dim(n, comm, 1);
 
 
-    *local_matrix = (double *)malloc(row_count * col_count * sizeof(double));
+    int local_size = row_count * col_count;
+    *local_matrix = (double *)malloc(local_size * sizeof(double));
 
     //create sub_matrices for every processor in the first row, and distribute the matrix within these processors.
     int *scounts = NULL, *displs = NULL;
@@ -194,7 +195,7 @@ void distribute_matrix(const int n, double* input_matrix, double** local_matrix,
         displs = (int *)malloc(q * sizeof(int));
         scounts = (int *)malloc(q * sizeof(int));
 
-        for (int i = 0; i < q; i++)
+        for (int i = 0; i < q; ++i)
         {
             displs[i] = offset;
             scounts[i] = block_decompose(n, q, i) * n;
@@ -202,69 +203,64 @@ void distribute_matrix(const int n, double* input_matrix, double** local_matrix,
         }
     }
 
-    double * sub_matrix1d;
-    double ** sub_matrix2d;
+    double *scatter_matrix = NULL;
 
-    if(col_rank == 0)
+    if(row_rank == 0)
     {
-        int local_size = block_decompose(n, q, row_rank) * n;
-        sub_matrix1d = (double *)malloc(local_size * sizeof(double));
-        MPI_Scatterv(input_matrix, scounts, displs, MPI_DOUBLE, sub_matrix1d, local_size, MPI_DOUBLE, rank00, row_comm);
+        int scatter_size = row_count * n;
+        scatter_matrix = (double *)malloc(scatter_size * sizeof(double));
+        MPI_Scatterv(input_matrix, scounts, displs, MPI_DOUBLE, scatter_matrix, scatter_size, MPI_DOUBLE, 0, col_comm);
+        //std::cout << col_rank << ":" << scatter_matrix[0] << "," << scatter_matrix[1] << "," << scatter_matrix[2] << std::endl;
 
 
         //copy 1 dimensional sub_matrix to 2d sub_matrix as rows and columns for distribution
 
-        sub_matrix2d = (double **)malloc(col_count * sizeof(double*));
-        for(int i = 0; i < col_count; i++)
-            sub_matrix2d[i] = (double *)malloc(n*sizeof(double));
+        //std::cout << col_rank << std::endl;
+        //for (int i = 0; i < scatter_size; ++i)
+          //std::cout << i << "=" << scatter_matrix[i] << " ";
+        //std::cout << std::endl;
+
+        local_transpose(row_count, n, scatter_matrix);
+
+        //std::cout << col_rank << std::endl;
+        //for (int i = 0; i < scatter_size; ++i)
+          //std::cout << i << "=" << scatter_matrix[i] << " ";
+        //std::cout << std::endl;
 
 
+        int offset = 0;
 
-        int index = 0;
-        for(int i = 0; i < col_count; i++)
-            for(int j = 0; j < n; j++)
-            {
-                sub_matrix2d[i][j] = sub_matrix1d[index];
-                index++;
-            }
+        if (displs == NULL)
+            displs = (int*)malloc(q * sizeof(int));
+        if (scounts == NULL)
+            scounts = (int*)malloc(q * sizeof(int));
 
-        //now rewrite sub_matrix1d with sub_matrix2d (transpose)
-        index = 0;
-        for(int i = 0; i < n; i++)
-            for(int j = 0; j < col_count; j++)
-            {
-                sub_matrix1d[index] = sub_matrix2d[j][i];
-                index++;
-            }
+        for (int i = 0; i < q; i++)
+        {
+            displs[i] = offset;
+            //scounts[i] = block_decompose(n, q, i);
+            scounts[i] = block_decompose(n, q, i) * row_count;
+            offset += scounts[i];
+        }
 
     }
 
 
     //distribute the sub_matrices within their columns to finish the matrix distribution.
 
-    if(col_rank == 0)
-    {
-            int offset = 0;
+    MPI_Scatterv(scatter_matrix, scounts, displs, MPI_DOUBLE, *local_matrix, local_size, MPI_DOUBLE, 0 , row_comm);
+    free(scatter_matrix);
 
-            if (displs == NULL)
-                displs = (int*)malloc(q * sizeof(int));
-            if (scounts == NULL)
-                scounts = (int*)malloc(q * sizeof(int));
+    //std::cout << col_rank << "," << row_rank << ": ";
+    //for (int i = 0; i < local_size; ++i)
+      //std::cout << i << "=" << (*local_matrix)[i] << " ";
+    //std::cout << std::endl;
 
-            for (int i = 0; i < q; i++)
-            {
-                displs[i] = offset;
-                scounts[i] = block_decompose(n, q, i) * col_count;
-                offset += scounts[i];
-            }
-
-
-    }
-
-
-    int local_size = block_decompose(n, q, col_rank) * col_count;
-
-    MPI_Scatterv(sub_matrix1d, scounts, displs, MPI_DOUBLE, *local_matrix, local_size, MPI_DOUBLE, 0 , col_comm);
+    local_transpose(col_count, row_count, *local_matrix);
+    //std::cout << col_rank << "," << row_rank << ": ";
+    //for (int i = 0; i < local_size; ++i)
+      //std::cout << i << "=" << (*local_matrix)[i] << " ";
+    //std::cout << std::endl;
 
     free(displs);
     free(scounts);
@@ -274,8 +270,6 @@ void distribute_matrix(const int n, double* input_matrix, double** local_matrix,
 
 void transpose_bcast_vector(const int n, double* col_vector, double* row_vector, MPI_Comm comm)
 {
-    // TODO
-
     int grid_rank;
     MPI_Comm_rank(comm, &grid_rank);
     int p, q;
@@ -320,9 +314,6 @@ void transpose_bcast_vector(const int n, double* col_vector, double* row_vector,
 
 void distributed_matrix_vector_mult(const int n, double* local_A, double* local_x, double* local_y, MPI_Comm comm)
 {
-    // TODO
-    // TODO
-
     int grid_rank;
     MPI_Comm_rank(comm, &grid_rank);
     int p, q;
@@ -332,11 +323,8 @@ void distributed_matrix_vector_mult(const int n, double* local_A, double* local_
     MPI_Comm row_comm;
     row_comm = row_subcomm(comm);
 
-    int col_rank, row_rank;
-    int coords[2];
-    MPI_Cart_coords(comm, grid_rank, 2, coords);
-    col_rank = coords[0];
-    row_rank = coords[1];
+    int row_rank;
+    MPI_Comm_rank(row_comm, &row_rank);
 
     int scount = block_decompose(n, q, row_rank);
     double *local_vector = (double *)malloc(scount*sizeof(double));
@@ -364,12 +352,15 @@ void distributed_matrix_vector_mult(const int n, double* local_A, double* local_
 //            std::cout << "      rank: " << grid_rank << "   y[" << i << "] = " << local_y[i] << std::endl;
     }
 
+    free(local_vector);
+
 
     //reduce the local_y's to column
     if(row_rank == 0)
         MPI_Reduce(MPI_IN_PLACE, local_y, row_count, MPI_DOUBLE, MPI_SUM, 0, row_comm);
     else
         MPI_Reduce(local_y, local_y, row_count, MPI_DOUBLE, MPI_SUM, 0, row_comm);
+
 
 //    if(row_rank == 0)
 //    {
@@ -384,18 +375,8 @@ void distributed_matrix_vector_mult(const int n, double* local_A, double* local_
 void distributed_jacobi(const int n, double* local_A, double* local_b, double* local_x,
                 MPI_Comm comm, int max_iter, double l2_termination)
 {
-    // TODO
-    // TODO
-
-    int rank00, grid_rank;
-    int coords[2] = {0, 0};
-    MPI_Cart_rank(comm, coords, &rank00);
+    int grid_rank;
     MPI_Comm_rank(comm, &grid_rank);
-
-    int p, q;
-    MPI_Comm_size(comm, &p);
-    q = (int)sqrt(p);
-
 
     MPI_Comm row_comm;
     row_comm = row_subcomm(comm);
@@ -419,6 +400,9 @@ void distributed_jacobi(const int n, double* local_A, double* local_b, double* l
     double *local_R = (double *)malloc(local_size * sizeof(double));
     // assign local A matrix to local R matrix
     memcpy(local_R, local_A, local_size * sizeof(double));
+
+    //std::cout << row_rank << "," << col_rank << ":" << local_A[0] << std::endl;
+    //std::cout.flush();
 
     // check if the current processor is a diagonal processor or the first column
     if ((row_rank == col_rank) || (row_rank == 0))

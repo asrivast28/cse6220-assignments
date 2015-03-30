@@ -8,9 +8,9 @@ ifeq ($(UNAME_S),Darwin)
 	CXX = mpicxx-openmpi-mp
 	MPIRUN = mpiexec-openmpi-mp
 endif
-CCFLAGS=-Wall -g
+#CCFLAGS=-Wall -g
 # activate for compiler optimizations:
-#CCFLAGS=-Wall -O3
+CCFLAGS=-Wall -O3
 LDFLAGS=
 
 # set up google test

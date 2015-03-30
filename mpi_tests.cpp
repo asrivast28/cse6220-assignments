@@ -103,46 +103,52 @@ TEST(MpiTest, Jacobi1)
 ///**
 // * Test the parallel code and compare the results with the sequential code.
 // */
-//TEST(MpiTest, JacobiCrossTest1)
-//{
-//    // test random matrixes, test parallel code with sequential solutions
-//    std::vector<double> A;
-//    std::vector<double> b;
-//    std::vector<double> mpi_x;
-//
-//    // get grid communicator
-//    MPI_Comm grid_comm;
-//    get_grid_comm(&grid_comm);
-//    int rank;
-//    MPI_Comm_rank(grid_comm, &rank);
-//
-//    int n = 36;
-//    // initialize data only on rank 0
-//    if (rank == 0)
-//    {
-//        A = diag_dom_rand(n);
-//        b = randn(n, 100.0, 50.0);
-//    }
-//
-//    // getting sequential results
-//    std::vector<double> x;
-//    if (rank == 0)
-//    {
-//        x.resize(n);
-//        jacobi(n, &A[0], &b[0], &x[0]);
-//    }
-//
-//    // parallel jacobi
-//    if (rank == 0)
-//        mpi_x.resize(n);
-//    mpi_jacobi(n, &A[0], &b[0], &mpi_x[0], grid_comm);
-//
-//    if (rank == 0)
-//    {
-//        // checking if all values are correct (up to some error value)
-//        for (int i = 0; i < n; ++i)
-//        {
-//            EXPECT_NEAR(x[i], mpi_x[i], 1e-8) << " MPI solution x[" << i << "] differs from sequential result";
-//        }
-//    }
-//}
+TEST(MpiTest, JacobiCrossTest1)
+{
+    // test random matrixes, test parallel code with sequential solutions
+    std::vector<double> A;
+    std::vector<double> b;
+    std::vector<double> mpi_x;
+
+    // get grid communicator
+    MPI_Comm grid_comm;
+    get_grid_comm(&grid_comm);
+    int rank;
+    MPI_Comm_rank(grid_comm, &rank);
+
+    int n = 36;
+    // initialize data only on rank 0
+    if (rank == 0)
+    {
+        A = diag_dom_rand(n);
+        b = randn(n, 100.0, 50.0);
+        //for (int i = 0; i < n; ++i)
+        //{
+          //for (int j = 0; j < n; ++j)
+            //std::cout << A[i * n + j] << " ";
+          //std::cout << " = " << b[i] << std::endl;
+        //}
+    }
+
+    // getting sequential results
+    std::vector<double> x;
+    if (rank == 0)
+    {
+        x.resize(n);
+        jacobi(n, &A[0], &b[0], &x[0]);
+    }
+
+    // parallel jacobi
+    if (rank == 0)
+        mpi_x.resize(n);
+    mpi_jacobi(n, &A[0], &b[0], &mpi_x[0], grid_comm);
+
+    if (rank == 0)
+    {
+        // checking if all values are correct (up to some error value)
+        for (int i = 0; i < n; ++i)
+        {
+            EXPECT_NEAR(x[i], mpi_x[i], 1e-8) << " MPI solution x[" << i << "] differs from sequential result";
+        }
+    }
+}
