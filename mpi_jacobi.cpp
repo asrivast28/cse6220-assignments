@@ -37,13 +37,11 @@ void distribute_vector(const int n, double* input_vector, double** local_vector,
 
     MPI_Comm col_comm;
     int col_rank;
-    int coords[2];
 
    if(grid_rank % q == 0)
    {
        col_comm = col_subcomm(comm);
-       MPI_Cart_coords(comm, grid_rank, 2, coords);
-       col_rank = coords[0];
+       MPI_Comm_rank(col_comm, &col_rank);
    }
 
     //not the first column
@@ -59,7 +57,7 @@ void distribute_vector(const int n, double* input_vector, double** local_vector,
 
 
     int local_size = block_decompose(n, q, col_rank);
-    *local_vector = (double *)malloc(local_size*sizeof(double));
+    *local_vector = (double *)malloc(local_size * sizeof(double));
 
 
     if(grid_rank == rank00)
