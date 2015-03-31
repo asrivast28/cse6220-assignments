@@ -8,10 +8,6 @@
 
 #include "parallel_sort.h"
 
-// my shit
-#include <vector>
-#include "io.h"
-
 // implementation of your parallel sorting
 void parallel_sort(int * begin, int* end, MPI_Comm comm) {
 }
