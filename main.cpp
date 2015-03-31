@@ -79,7 +79,7 @@ void print_solution(std::vector<int>& solution, std::ostream& os = std::cout)
  */
 void print_usage()
 {
-    std::cerr << "Usage: ./mpi_sort [options] [input_file]" << std::endl;
+    std::cerr << "Usage: ./sort [options] [input_file]" << std::endl;
     std::cerr << "      Optional arguments:" << std::endl;
     std::cerr << "          -o <file>    Output all solutions to the given file." << std::endl;
     std::cerr << "          -o -         Output all solutions to stdout." << std::endl;
@@ -87,7 +87,7 @@ void print_usage()
     std::cerr << "          -r           Run random number tests, random numbers are generated only locally, no bottleneck at startup." << std::endl;
     std::cerr << "          -n <n>       Sets the number of generated input integers (mandatory with option -r and -t)" << std::endl;
     std::cerr << "      Example:" << std::endl;
-    std::cerr << "          ./mpi_sort -o - input.txt" << std::endl;
+    std::cerr << "          ./sort -o - input.txt" << std::endl;
     std::cerr << "                  Sorts the numbers given by input.txt and outputs the sorted result to the terminal" << std::endl;
 }
 

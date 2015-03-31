@@ -61,7 +61,7 @@ After compilation, you'll have an executable `sort`. You can use this program as
 follows:
 
 ```
-Usage: ./mpi_sort [options] [input_file]
+Usage: ./sort [options] [input_file]
       Optional arguments:
           -o <file>    Output all solutions to the given file.
           -o -         Output all solutions to stdout.
@@ -69,7 +69,7 @@ Usage: ./mpi_sort [options] [input_file]
           -r           Run random number tests, random numbers are generated only locally, no bottleneck at startup.
           -n <n>       Sets the number of generated input integers (mandatory with option -r and -t)
       Example:
-          ./mpi_sort -o - input.txt
+          ./sort -o - input.txt
                   Sorts the numbers given by input.txt and outputs the sorted result to the terminal
 ```
 
