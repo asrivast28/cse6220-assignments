@@ -99,10 +99,10 @@ TEST(MpiTest, Jacobi1)
     }
 }
 
-//
-///**
-// * Test the parallel code and compare the results with the sequential code.
-// */
+
+/**
+ * Test the parallel code and compare the results with the sequential code.
+ */
 TEST(MpiTest, JacobiCrossTest1)
 {
     // test random matrixes, test parallel code with sequential solutions
@@ -122,12 +122,6 @@ TEST(MpiTest, JacobiCrossTest1)
     {
         A = diag_dom_rand(n);
         b = randn(n, 100.0, 50.0);
-        //for (int i = 0; i < n; ++i)
-        //{
-          //for (int j = 0; j < n; ++j)
-            //std::cout << A[i * n + j] << " ";
-          //std::cout << " = " << b[i] << std::endl;
-        //}
     }
 
     // getting sequential results
