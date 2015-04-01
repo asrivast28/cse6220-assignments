@@ -3,24 +3,18 @@
 from argparse import ArgumentParser, ArgumentTypeError
 from itertools import product
 import os
-import sys
 import subprocess
 
+
 # run the executable with given parameters
-def run_with_parameters(dir, p, n, d):
+def run_with_parameters(p, n, d):
     # should be in the same directory as this file
-    executable = os.path.join(dir, 'jacobi')
-    p = subprocess.Popen(['mpirun', '-np', str(p), executable, '-n', str(n), '-d', str(d)],
+    p = subprocess.Popen(['mpirun', '-np', str(p), './jacobi', '-n', str(n), '-d', str(d)],
                           stdout = subprocess.PIPE, stderr = subprocess.PIPE)
     # get output from stdout and stderr
     result, errors = p.communicate()
     # print out the result from stdout
-    try:
-      return float(errors.strip().split()[-1])
-    except:
-      print "result: ", result 
-      print "errors: ", errors
-      raise
+    return float(errors.strip().split()[-1])
 
 def processor(x):
     x = int(x)
@@ -49,20 +43,15 @@ if __name__ == '__main__':
     parser.add_argument("-d", help = "Difficulty of the input.", required = True,
                         type = difficulty, nargs = '+', metavar = 'DIFFICULTY')
     parser.add_argument("--repeat", help = "Number of repetitions.",
-                        type = int, default = 3, metavar = 'COUNT')
-    parser.add_argument("--dir", help = "Directory which contains the executable 'jacobi'.",
-                        type = str, default = os.path.join(os.environ.get('HOME'), 'CSE6220', 'prog2'), metavar = 'PATH')
+                        type = int, default = 3, metavar = 'DIFFICULTY')
     args = parser.parse_args()
 
-    #with open('timings.txt', 'wb') as t:
-    with sys.stderr as t:
-      t.write('p\tn\td\tTime(s)\n')
-      for params in product(args.p, args.n, args.d):
-          time = 0.0
-          for run in range(args.repeat):
-              time += run_with_parameters(args.dir, *params)
-          time /= args.repeat
-          result = list(params)
-          result.append(time)
-          t.write('%d\t%d\t%r\t%r\n'%tuple(result))
-          t.flush()
+    print 'p\tn\td\tTime(s)'
+    for params in product(args.p, args.n, args.d):
+        time = 0.0
+        for run in range(args.repeat):
+            time += run_with_parameters(*params)
+        time /= args.repeat
+        result = list(params)
+        result.append(time)
+        print '%d\t%d\t%r\t%r'%tuple(result)
