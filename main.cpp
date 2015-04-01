@@ -48,6 +48,8 @@ int clock_gettime(int /*clk_id*/, struct timespec* t) {
 #endif
 
 
+// wrap is_sorted in a namespace so that it doesn't conflict with library version of is_sorted
+namespace local {
 /**
  * @brief Returns whether the given input range is in sorted order.
  *
@@ -69,6 +71,8 @@ bool is_sorted(Iterator begin, Iterator end)
         last = *(begin++);
     }
     return true;
+}
+
 }
 
 
@@ -303,7 +307,7 @@ int main(int argc, char *argv[])
         if (do_generate_global)
         {
             // check that the output is actually sorted
-            if (!is_sorted(sorted_elements.begin(), sorted_elements.end()))
+            if (!local::is_sorted(sorted_elements.begin(), sorted_elements.end()))
             {
                 DEBUG("ERROR: OUTPUT IS NOT SORTED");
                 exit(EXIT_FAILURE);
