@@ -42,7 +42,7 @@
  * @return  Whether the input sequence is sorted.
  */
 template <typename Iterator>
-bool is_sorted(Iterator begin, Iterator end)
+bool is_sorted_sequence(Iterator begin, Iterator end)
 {
     if (begin == end)
         return true;
@@ -288,7 +288,7 @@ int main(int argc, char *argv[])
         if (do_generate_global)
         {
             // check that the output is actually sorted
-            if (!is_sorted(sorted_elements.begin(), sorted_elements.end()))
+            if (!is_sorted_sequence(sorted_elements.begin(), sorted_elements.end()))
             {
                 DEBUG("ERROR: OUTPUT IS NOT SORTED");
                 exit(EXIT_FAILURE);
