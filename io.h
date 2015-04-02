@@ -61,7 +61,7 @@ scatter_stream_block_decomp(Iterator input, unsigned long long n, MPI_Comm comm)
         /* I am the root process */
         // the local vector size (MPI restricts message sizes to `int`)
         unsigned long long local_size_l = block_decompose(n, p, rank);
-        if (local_size_l > std::numeric_limits<int>::max())
+        if (local_size_l > (size_t)std::numeric_limits<int>::max())
             throw std::runtime_error("Local size must be smaller than int limit");
         int local_size = local_size_l;
 

@@ -248,7 +248,7 @@ int main(int argc, char *argv[])
         + (double) (t_end.tv_nsec - t_start.tv_nsec) * 1e-9;
     // output time
     if (rank == 0) {
-        DEBUG("sorting took: " << time_secs << " ms");
+        DEBUG("sorting took: " << time_secs << " s");
     }
 
     /*********************
