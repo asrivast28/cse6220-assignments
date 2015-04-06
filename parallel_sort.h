@@ -25,12 +25,20 @@
  *              sorting.
  */
 void parallel_sort(int * begin, int* end, MPI_Comm comm);
+// uncomment the following line for indented printing
+//void parallel_sort(int * begin, int* end, MPI_Comm comm, int level = 0);
 
 
 /*********************************************************************
  *              Declare your own helper functions here               *
  *********************************************************************/
 
-// ...
+int random_at_max(int max);
+
+int partition(int* a, int size, int pivot); 
+
+void distribute_data(int* sendbuf, int* proc_sizes, int* recvbuf, int* final_sizes, int color, MPI_Comm comm);
+
+void collect_data(int* sendbuf, int* current_sizes, int* recvbuf, int* final_sizes, MPI_Comm comm);
 
 #endif // PARALLEL_SORT_H
