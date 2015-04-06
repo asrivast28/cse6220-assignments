@@ -253,7 +253,7 @@ int main(int argc, char *argv[])
     /*****************
      *  Run Sorting  *
      *****************/
-    parallel_sort(&local_elements[0], &local_elements[0] + local_elements.size(), MPI_COMM_WORLD, 0);
+    parallel_sort(&local_elements[0], &local_elements[0] + local_elements.size(), MPI_COMM_WORLD);
 
 
     MPI_Barrier (MPI_COMM_WORLD);

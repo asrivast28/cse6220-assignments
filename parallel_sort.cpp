@@ -16,16 +16,16 @@
 #include <vector>
 
 //uncomment for pretty printing
-#include "prettyprint.hpp"
+//#include "prettyprint.hpp"
 
 // count the number of times this rank has been used as a seed
 static int counter = 0;
 
 
 // implementation of your parallel sorting
-//void parallel_sort(int * begin, int* end, MPI_Comm comm) {
+void parallel_sort(int * begin, int* end, MPI_Comm comm) {
 // use the following line for indented printing
-void parallel_sort(int * begin, int* end, MPI_Comm comm, int level) {
+//void parallel_sort(int * begin, int* end, MPI_Comm comm, int level) {
   // communicator size
   int q = 0;
   MPI_Comm_size(comm, &q);
@@ -36,8 +36,8 @@ void parallel_sort(int * begin, int* end, MPI_Comm comm, int level) {
 
   int local_size = end - begin;
   
-  int global_r = -1;
-  MPI_Comm_rank(MPI_COMM_WORLD, &global_r);
+  //int global_r = -1;
+  //MPI_Comm_rank(MPI_COMM_WORLD, &global_r);
 
   //std::cout << std::string(level, '\t') << global_r << ": initial = " << pretty_print_array(begin, local_size) << std::endl;
   //fflush(stdout);
