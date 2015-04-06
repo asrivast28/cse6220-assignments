@@ -8,6 +8,10 @@
 
 #include "parallel_sort.h"
 
+//uncomment for pretty printing
+//#include "prettyprint.hpp"
+
+
 // implementation of your parallel sorting
 void parallel_sort(int * begin, int* end, MPI_Comm comm) {
 }

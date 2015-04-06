@@ -12,6 +12,8 @@ endif
 #CCFLAGS=-Wall -g 
 # activate for compiler optimizations:
 CCFLAGS=-Wall -O3 -g
+# use the following for pretty printing
+#CCFLAGS=-Wall -O3 -g -std=c++11
 LDFLAGS=
 
 # set up google test
