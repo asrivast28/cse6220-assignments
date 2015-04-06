@@ -270,82 +270,45 @@ void distribute_data(int* sendbuf, int* current_sizes, int* recvbuf, int* final_
   //std::cout << r << ", " << color << ": extra_sizes = " << extra_sizes << std::endl;
   //fflush(stdout);
 
+  std::vector<int> cumulative_extra(q);
+  std::partial_sum(cumulative_extra.begin(), cumulative_extra.end(), cumulative_extra.begin());
+  std::vector<int> cumulative_need(q);
+  std::partial_sum(cumulative_need.begin(), cumulative_need.end(), cumulative_need.begin());
+
   std::vector<int> sendcounts(q);
   std::vector<int> recvcounts(q);
 
   std::vector<int> sdispls(q);
   std::vector<int> rdispls(q);
 
-  if (extra_sizes[r] > 0) {
-    for (int i = 0; i < r; ++i) {
-      if (extra_sizes[i] > 0) {
-        for (int j = 0; (j < q) && (extra_sizes[i] > 0); ++j) {
-          if (need_sizes[j] > 0) {
-            if (extra_sizes[i] > need_sizes[j]) {
-              extra_sizes[i] -= need_sizes[j];
-              need_sizes[j] = 0;
-            }
-            else {
-              need_sizes[j] -= extra_sizes[i];
-              extra_sizes[i] = 0;
-            }
-          }
-        }
+  int extra_min = cumulative_extra[r] - extra_sizes[r];
+  int extra_max = cumulative_extra[r] - 1;
+
+  int need_min = cumulative_need[r] - need_sizes[r];
+  int need_max = cumulative_need[r] - 1;
+
+  for (int p = 0; p < q; ++p) {
+    if (r != p) {
+      if ((cumulative_extra[p] > need_min) && (cumulative_extra[p] - extra_sizes[p] <= need_max)) { 
+        recvcounts[p] = std::min(cumulative_extra[p] - 1, need_max) - std::max(cumulative_extra[p] - extra_sizes[p], need_min) + 1;
+      }
+      if ((extra_max + 1 > cumulative_need[p] - need_sizes[p]) && (extra_min <= cumulative_need[p] - 1)) { 
+        sendcounts[p] = std::min(extra_max, cumulative_need[p] - 1) - std::max(extra_min, cumulative_need[p] - need_sizes[p]) + 1;
       }
     }
+  }
+
+  if (extra_sizes[r] > 0) {
     sendcounts[r] = final_sizes[r];
     recvcounts[r] = final_sizes[r];
-    for (int j = 0; (j < q) && (extra_sizes[r] > 0); ++j) {
-      if (need_sizes[j] > 0) {
-        if (extra_sizes[r] > need_sizes[j]) {
-          extra_sizes[r] -= need_sizes[j];
-          sendcounts[j] = need_sizes[j];
-          need_sizes[j] = 0;
-        }
-        else {
-          sendcounts[j] = extra_sizes[r];
-          need_sizes[j] -= extra_sizes[r];
-          extra_sizes[r] = 0;
-        }
-      }
-    }
-    calculate_displacements(&sendcounts[0], &sdispls[0], q);
   }
-  else { // if (need_sizes[r] > 0)
-    for (int i = 0; i < r; ++i) {
-      if (need_sizes[i] > 0) {
-        for (int j = 0; (j < q) && (need_sizes[i] > 0); ++j) {
-          if (extra_sizes[j] > 0) {
-            if (extra_sizes[j] > need_sizes[i]) {
-              extra_sizes[j] -= need_sizes[i];
-              need_sizes[i] = 0;
-            }
-            else {
-              need_sizes[i] -= extra_sizes[j];
-              extra_sizes[j] = 0;
-            }
-          }
-        }
-      }
-    }
+  else {
     sendcounts[r] = current_sizes[r * 2 + color];
     recvcounts[r] = current_sizes[r * 2 + color];
-    for (int j = 0; (j < q) && (need_sizes[r] > 0); ++j) {
-      if (extra_sizes[j] > 0) {
-        if (extra_sizes[j] > need_sizes[r]) {
-          extra_sizes[j] -= need_sizes[r];
-          recvcounts[j] = need_sizes[r];
-          need_sizes[r] = 0;
-        }
-        else {
-          need_sizes[r] -= extra_sizes[j];
-          recvcounts[j] = extra_sizes[j];
-          extra_sizes[j] = 0;
-        }
-      }
-    }
-    calculate_displacements(&recvcounts[0], &rdispls[0], q);
   }
+  calculate_displacements(&sendcounts[0], &sdispls[0], q);
+  calculate_displacements(&recvcounts[0], &rdispls[0], q);
+
 
   //std::cout << r << ", " << color << ": sendcounts = " << sendcounts << std::endl;
   //std::cout << r << ", " << color << ": sdispls = " << sdispls << std::endl;
