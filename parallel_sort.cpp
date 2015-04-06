@@ -232,7 +232,7 @@ int partition(int* a, int size, int pivot)
       --right;
     }
   }
-  while ((a[left] > pivot) && (left >= 0)) {
+  while ((left >= 0) && (a[left] > pivot)) {
     --left;
   }
   return left;
