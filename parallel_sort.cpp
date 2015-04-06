@@ -117,8 +117,11 @@ void parallel_sort(int * begin, int* end, MPI_Comm comm) {
   int num_processors[2] = {};
   for (int i = 0; i < 2; ++i) {
     num_processors[i] = ceil((sum_sizes[i] * q) / static_cast<double>(m));
+    if (num_processors[i] == 0) {
+      num_processors[i] = 1;
+    }
   }
-  if (num_processors[0] + num_processors[1] > q) {
+  while (num_processors[0] + num_processors[1] > q) {
     int i = sum_sizes[0] > sum_sizes[1] ? 1 : 0;
     if (num_processors[i] == 1) {
       i = (i + 1) % 2;
