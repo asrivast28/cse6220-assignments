@@ -24,7 +24,7 @@ CCFLAGS += -I. #-I$(GTEST_DIR)
 all: sort tests
 
 test: tests
-	for p in 3 4 5; do \
+	for p in 2 3 4 5; do \
 	echo "### TESTING WITH $$p PROCESSES ###"; $(MPIRUN) -np $$p ./mpi_tests ;\
 	done
 
