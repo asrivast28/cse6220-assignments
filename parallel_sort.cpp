@@ -277,9 +277,9 @@ void distribute_data(int* sendbuf, int* current_sizes, int* recvbuf, int* final_
   //fflush(stdout);
 
   std::vector<int> cumulative_extra(q);
-  std::partial_sum(cumulative_extra.begin(), cumulative_extra.end(), cumulative_extra.begin());
+  std::partial_sum(extra_sizes.begin(), extra_sizes.end(), cumulative_extra.begin());
   std::vector<int> cumulative_need(q);
-  std::partial_sum(cumulative_need.begin(), cumulative_need.end(), cumulative_need.begin());
+  std::partial_sum(need_sizes.begin(), need_sizes.end(), cumulative_need.begin());
 
   std::vector<int> sendcounts(q);
   std::vector<int> recvcounts(q);
