@@ -235,6 +235,9 @@ int partition(int* a, int size, int pivot)
       --right;
     }
   }
+  while (left >= size) {
+    --left;
+  }
   while ((left >= 0) && (a[left] > pivot)) {
     --left;
   }
