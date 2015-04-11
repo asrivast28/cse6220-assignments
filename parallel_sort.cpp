@@ -157,8 +157,10 @@ void parallel_sort(int * begin, int* end, MPI_Comm comm) {
   //std::cout << std::string(level, '\t') << global_r << ": final_buf = " << final_buf << std::endl;
   //fflush(stdout);
 
-  // again call parallel sort
-  parallel_sort(&final_buf[0], &final_buf[0] + final_size, newcomm);
+  // again call parallel sort, only if there is something to sort though
+  if (sum_sizes[color] > 0) {
+    parallel_sort(&final_buf[0], &final_buf[0] + final_size, newcomm);
+  }
   // uncomment the following line for indented printing
   //parallel_sort(&final_buf[0], &final_buf[0] + final_size, newcomm, level + 1);
 
