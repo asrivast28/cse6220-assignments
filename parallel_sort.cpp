@@ -105,7 +105,7 @@ void parallel_sort(int * begin, int* end, MPI_Comm comm, int level) {
   // partition the number of processors based on the sizes of subarrays
   int num_processors[2] = {};
   for (int i = 0; i < 2; ++i) {
-    num_processors[i] = ceil((sum_sizes[i] * q) / static_cast<double>(m));
+    num_processors[i] = ceil((sum_sizes[i] / static_cast<double>(m)) * q);
     if (num_processors[i] == 0) {
       num_processors[i] = 1;
     }
