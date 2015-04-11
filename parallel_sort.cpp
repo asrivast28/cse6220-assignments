@@ -18,8 +18,8 @@
 //uncomment for pretty printing
 //#include "prettyprint.hpp"
 
-// count the number of times this rank has been used as a seed
-static int counter = 0;
+// count the number of times this rank has been used and use the count as a seed
+static int counter = 1;
 
 
 // implementation of your parallel sorting
@@ -60,20 +60,9 @@ void parallel_sort(int * begin, int* end, MPI_Comm comm) {
     min_index += block_decompose(m, q, p);
   }
 
-  // use global rank of processor rank 0 in this communicator
-  // for seeding the random number generator
-  // TODO: review this later
-  int seed = -1;
-  if (r == 0) {
-    MPI_Comm_rank(MPI_COMM_WORLD, &seed);
-    // do the following so that the same rank isn't used twice for seeding 
-    seed += counter;
-  }
-  ++counter;
-  MPI_Bcast(&seed, 1, MPI_INT, 0, comm); 
-
   // seed the random number generator now
-  srand(seed);
+  srand(counter);
+  ++counter;
   // pick an index in the range [0, m-1]
   int k = random_at_max(m - 1);
   // set pivot to actual value in the processor that has the pivot
