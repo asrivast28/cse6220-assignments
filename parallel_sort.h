@@ -24,9 +24,9 @@
  * @param comm  The MPI communicator with the processors participating in the
  *              sorting.
  */
-void parallel_sort(int * begin, int* end, MPI_Comm comm);
+//void parallel_sort(int * begin, int* end, MPI_Comm comm);
 // uncomment the following line for indented printing
-//void parallel_sort(int * begin, int* end, MPI_Comm comm, int level = 0);
+void parallel_sort(int * begin, int* end, MPI_Comm comm, int level = 0);
 
 
 /*********************************************************************
