@@ -35,7 +35,7 @@ void parallel_sort(int * begin, int* end, MPI_Comm comm) {
   MPI_Comm_rank(comm, &r);
 
   int local_size = end - begin;
-  
+
   //int global_r = -1;
   //MPI_Comm_rank(MPI_COMM_WORLD, &global_r);
 
@@ -77,7 +77,7 @@ void parallel_sort(int * begin, int* end, MPI_Comm comm) {
   // partition the local array into two subarrays
   // one containing elements greater than the pivot
   // the other with elements less than or equal to the pivot
-  int boundary = partition(begin, local_size, pivot); 
+  int boundary = partition(begin, local_size, pivot);
 
   int partition_sizes[2];
   partition_sizes[0] = boundary + 1;
@@ -124,12 +124,13 @@ void parallel_sort(int * begin, int* end, MPI_Comm comm) {
   // now split the communicator
   MPI_Comm newcomm;
   int color = (r < num_processors[0]) ? 0 : 1;
-  MPI_Comm_split(comm, color, r, &newcomm); 
+  MPI_Comm_split(comm, color, r, &newcomm);
 
   // determine the final size in this processor after the distribution
   int final_size = block_decompose(sum_sizes[color], newcomm);
   // create a new buffer of the appropriate size
   std::vector<int> final_buf(final_size);
+  int* final_ptr = final_size > 0 ? &final_buf[0] : NULL;
 
   // now distribute_data the data, once for each subarray
   int offset = 0;
@@ -145,11 +146,12 @@ void parallel_sort(int * begin, int* end, MPI_Comm comm) {
     //fflush(stdout);
     //std::cout << r << ", " << i << ": begin[data_offset] = " << pretty_print_array(&begin[data_offset], current_sizes[r * 2 + i]) << std::endl;
     //fflush(stdout);
+    int* sendbuf = (begin != NULL) ? &begin[data_offset] : NULL;
     if (i == color) {
-      distribute_data(&begin[data_offset], current_sizes, &final_buf[0], &final_sizes[0], i, comm); 
+      distribute_data(sendbuf, current_sizes, final_ptr, &final_sizes[0], i, comm);
     }
     else {
-      distribute_data(&begin[data_offset], current_sizes, NULL, &final_sizes[0], i, comm); 
+      distribute_data(sendbuf, current_sizes, NULL, &final_sizes[0], i, comm);
     }
     offset += num_processors[i];
     data_offset += (boundary + 1);
@@ -159,10 +161,10 @@ void parallel_sort(int * begin, int* end, MPI_Comm comm) {
 
   // again call parallel sort, only if there is something to sort though
   if (sum_sizes[color] > 0) {
-    parallel_sort(&final_buf[0], &final_buf[0] + final_size, newcomm);
+    parallel_sort(final_ptr, final_ptr + final_size, newcomm);
+    // uncomment the following line for indented printing
+    //parallel_sort(final_ptr, final_pt + final_size, newcomm, level + 1);
   }
-  // uncomment the following line for indented printing
-  //parallel_sort(&final_buf[0], &final_buf[0] + final_size, newcomm, level + 1);
 
   for (int i = 0, p = 0; i < 2; ++i) {
     for (int j = 0; j < num_processors[i]; ++j) {
@@ -170,13 +172,13 @@ void parallel_sort(int * begin, int* end, MPI_Comm comm) {
     }
   }
 
-  std::vector<int> final_sizes(q); 
+  std::vector<int> final_sizes(q);
   for (int p = 0; p < q; ++p) {
     final_sizes[p] = block_decompose(m, q, p);
   }
 
   // collect back the data from both the subcommunicators
-  collect_data(&final_buf[0], &current_sizes[0], begin, &final_sizes[0], comm); 
+  collect_data(final_ptr, &current_sizes[0], begin, &final_sizes[0], comm);
 
   //std::cout << std::string(level, '\t') << global_r << ": parallel sorted = " << pretty_print_array(begin, local_size) << std::endl;
   //fflush(stdout);
@@ -208,9 +210,9 @@ int random_at_max(int max) {
   return x / static_cast<int>(bin_size);
 }
 
-// partitions the given array using the given pivot 
+// partitions the given array using the given pivot
 // returns the index of the largest element <= pivot after partition
-int partition(int* a, int size, int pivot) 
+int partition(int* a, int size, int pivot)
 {
   int left = 0, right = size - 1;
   while (left < right) {
@@ -235,11 +237,11 @@ int partition(int* a, int size, int pivot)
   return left;
 }
 
-void calculate_displacements(const int* const count, int* const displs, int size) 
+void calculate_displacements(const int* const count, int* const displs, int size)
 {
   int offset = 0;
   for (int i = 0; i < size; ++i) {
-    displs[i] = offset; 
+    displs[i] = offset;
     offset += count[i];
   }
 }
@@ -286,10 +288,10 @@ void distribute_data(int* sendbuf, int* current_sizes, int* recvbuf, int* final_
 
   for (int p = 0; p < q; ++p) {
     if (r != p) {
-      if ((cumulative_extra[p] > need_min) && (cumulative_extra[p] - extra_sizes[p] <= need_max)) { 
+      if ((cumulative_extra[p] > need_min) && (cumulative_extra[p] - extra_sizes[p] <= need_max)) {
         recvcounts[p] = std::min(cumulative_extra[p] - 1, need_max) - std::max(cumulative_extra[p] - extra_sizes[p], need_min) + 1;
       }
-      if ((extra_max + 1 > cumulative_need[p] - need_sizes[p]) && (extra_min <= cumulative_need[p] - 1)) { 
+      if ((extra_max + 1 > cumulative_need[p] - need_sizes[p]) && (extra_min <= cumulative_need[p] - 1)) {
         sendcounts[p] = std::min(extra_max, cumulative_need[p] - 1) - std::max(extra_min, cumulative_need[p] - need_sizes[p]) + 1;
       }
     }
@@ -341,10 +343,10 @@ void collect_data(int* sendbuf, int* current_sizes, int* recvbuf, int* final_siz
   int final_max = cumulative_final[r] - 1;
 
   for (int p = 0; p < q; ++p) {
-    if ((cumulative_current[p] > final_min) && (cumulative_current[p] - current_sizes[p] <= final_max)) { 
+    if ((cumulative_current[p] > final_min) && (cumulative_current[p] - current_sizes[p] <= final_max)) {
       recvcounts[p] = std::min(cumulative_current[p] - 1, final_max) - std::max(cumulative_current[p] - current_sizes[p], final_min) + 1;
     }
-    if ((current_max + 1 > cumulative_final[p] - final_sizes[p]) && (current_min <= cumulative_final[p] - 1)) { 
+    if ((current_max + 1 > cumulative_final[p] - final_sizes[p]) && (current_min <= cumulative_final[p] - 1)) {
       sendcounts[p] = std::min(current_max, cumulative_final[p] - 1) - std::max(current_min, cumulative_final[p] - final_sizes[p]) + 1;
     }
   }
