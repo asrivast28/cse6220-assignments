@@ -237,7 +237,9 @@ int partition(int* a, int size, int pivot)
   return left;
 }
 
-void calculate_displacements(const int* const count, int* const displs, int size)
+// calculates offsets to be used for all-to-all communications
+// from the corresponding counts
+static void calculate_displacements(const int* const count, int* const displs, int size)
 {
   int offset = 0;
   for (int i = 0; i < size; ++i) {
@@ -256,6 +258,8 @@ void distribute_data(int* sendbuf, int* current_sizes, int* recvbuf, int* final_
 
   std::vector<int> extra_sizes(q);
   std::vector<int> need_sizes(q);
+  // determine the size that each processor has extra or that each processor needs
+  // corresponding to elements in this partition
   for (int p = 0; p < q; ++p) {
     if (final_sizes[p] < current_sizes[p * 2 + color]) {
       extra_sizes[p] = current_sizes[p * 2 + color] - final_sizes[p];
@@ -269,6 +273,7 @@ void distribute_data(int* sendbuf, int* current_sizes, int* recvbuf, int* final_
   //std::cout << r << ", " << color << ": extra_sizes = " << extra_sizes << std::endl;
   //fflush(stdout);
 
+  // calculate cumulative extra/need, used for indexing purpose
   std::vector<int> cumulative_extra(q);
   std::partial_sum(extra_sizes.begin(), extra_sizes.end(), cumulative_extra.begin());
   std::vector<int> cumulative_need(q);
@@ -286,7 +291,10 @@ void distribute_data(int* sendbuf, int* current_sizes, int* recvbuf, int* final_
   int need_min = cumulative_need[r] - need_sizes[r];
   int need_max = cumulative_need[r] - 1;
 
+  // now determine which processor sends how many elements to this processor
+  // or how many processor this processor needs to send to all the other processors
   for (int p = 0; p < q; ++p) {
+    // don't consider communication with self, it will be handled later
     if (r != p) {
       if ((cumulative_extra[p] > need_min) && (cumulative_extra[p] - extra_sizes[p] <= need_max)) {
         recvcounts[p] = std::min(cumulative_extra[p] - 1, need_max) - std::max(cumulative_extra[p] - extra_sizes[p], need_min) + 1;
@@ -297,6 +305,8 @@ void distribute_data(int* sendbuf, int* current_sizes, int* recvbuf, int* final_
     }
   }
 
+  // now handle communication with self
+  // communicate with self as much as possible, for minimizing communications
   if (extra_sizes[r] > 0) {
     sendcounts[r] = final_sizes[r];
     recvcounts[r] = final_sizes[r];
@@ -325,6 +335,7 @@ void collect_data(int* sendbuf, int* current_sizes, int* recvbuf, int* final_siz
   int q = 0;
   MPI_Comm_size(comm, &q);
 
+  // calculate cumulative current/final, used for indexing purpose
   std::vector<int> cumulative_current(current_sizes, current_sizes + q);
   std::partial_sum(cumulative_current.begin(), cumulative_current.end(), cumulative_current.begin());
   std::vector<int> cumulative_final(final_sizes, final_sizes + q);
@@ -342,6 +353,8 @@ void collect_data(int* sendbuf, int* current_sizes, int* recvbuf, int* final_siz
   int final_min = cumulative_final[r] - final_sizes[r];
   int final_max = cumulative_final[r] - 1;
 
+  // determine which processor sends how many elements to this processor
+  // or how many processor this processor needs to send to all the other processors
   for (int p = 0; p < q; ++p) {
     if ((cumulative_current[p] > final_min) && (cumulative_current[p] - current_sizes[p] <= final_max)) {
       recvcounts[p] = std::min(cumulative_current[p] - 1, final_max) - std::max(cumulative_current[p] - current_sizes[p], final_min) + 1;
