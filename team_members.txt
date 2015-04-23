@@ -9,3 +9,5 @@ Percentage contribution: 50.0%
 
 Description
 -----------
+Both the team members contributed to the development of algorithms & code,
+running the experiments, analysis of results, report writing, etc. equally.
