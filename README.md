@@ -1,22 +1,6 @@
 CSE 6220 Programming Assignment 3
 =================================
 
-## Code hosting
-
-You are highly encouraged to use a code version management tool such as git.
-This will help you to code in a team and keep track of your progress.
-
-However, do not upload your code to public repositories. If you want to use
-version management for collaboration, make sure to use private repositories.
-
-I highly recommend using Georgia Tech's Enterprise Github installation at
-https://github.gatech.edu/
-
-We will also be hosting the framework code for the programming assignment on
-there.  If you find any issues with the code framework and we have to make
-changes, we will publish those changes in that GitHub repository additionally to
-sending out the updated framework.
-
 ## Code structure
 
 All the code is located at the root level of the project.
