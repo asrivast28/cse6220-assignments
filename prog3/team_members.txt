@@ -1,0 +1,13 @@
+Team Members
+============
+
+* Ankit Srivastava (gT Username: asrivastava64, gT ID: 902838136)
+Percentage contribution: 50.0%
+
+* Cansu Tetik (gT Username: ctetik3, gT ID: 902989531)
+Percentage contribution: 50.0%
+
+Description
+-----------
+Both the team members contributed to the development of algorithms & code,
+running the experiments, analysis of results, report writing, etc. equally.
