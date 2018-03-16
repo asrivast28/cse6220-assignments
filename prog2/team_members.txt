@@ -1,0 +1,20 @@
+Team Members
+============
+
+* Ankit Srivastava (gT Username: asrivastava64, gT ID: 902838136)
+Percentage contribution: 50.0%
+
+* Cansu Tetik (gT Username: ctetik3, gT ID: 902989531)
+Percentage contribution: 50.0%
+
+Description
+-----------
+Both the team members contributed to the development of algorithms, running the
+experiments, analysis of results, report writing, etc. equally.
+
+Even though the code development was also collaborative, making it hard to
+assign credit to a single team member, following broad distribution of work
+can be made:
+* Ankit implemented the sequential Jacobi algorithm and helped with debugging
+  the parallel implementation.
+* Cansu implemented the parallel Jacobi and all the helper functions.
